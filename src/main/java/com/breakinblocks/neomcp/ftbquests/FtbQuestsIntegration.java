@@ -10,6 +10,7 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import dev.ftb.mods.ftbquests.quest.QuestObject;
+import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,7 +26,7 @@ public final class FtbQuestsIntegration {
         }
         BaseQuestFile file = FTBQuestsClient.getClientQuestFile();
         JsonObject result = new JsonObject();
-        result.addProperty("id", id);
+        result.addProperty("id", QuestObjectBase.getCodeString(id));
         result.addProperty("type", objectType);
 
         if ("chapter".equals(objectType)) {
@@ -76,15 +77,15 @@ public final class FtbQuestsIntegration {
                     .distinct()
                     .sorted()
                     .forEach(dependencyId -> {
-                        dependencies.add(dependencyId);
+                        dependencies.add(QuestObjectBase.getCodeString(dependencyId));
                         JsonObject dependencyLink = new JsonObject();
-                        dependencyLink.addProperty("parent_id", dependencyId);
-                        dependencyLink.addProperty("child_id", quest.getId());
+                        dependencyLink.addProperty("parent_id", QuestObjectBase.getCodeString(dependencyId));
+                        dependencyLink.addProperty("child_id", QuestObjectBase.getCodeString(quest.getId()));
                         dependencyLinks.add(dependencyLink);
                     });
 
             JsonObject questObject = new JsonObject();
-            questObject.addProperty("id", quest.getId());
+            questObject.addProperty("id", QuestObjectBase.getCodeString(quest.getId()));
             questObject.addProperty("title", quest.getTitle().getString());
             questObject.addProperty("x", quest.getX());
             questObject.addProperty("y", quest.getY());
@@ -101,9 +102,10 @@ public final class FtbQuestsIntegration {
         JsonArray linkedQuestData = new JsonArray();
         for (QuestLink questLink : questLinks) {
             JsonObject linkObject = new JsonObject();
-            linkObject.addProperty("id", questLink.getId());
-            linkObject.addProperty("chapter_id", questLink.getParentID());
-            questLink.getQuest().ifPresent(quest -> linkObject.addProperty("linked_quest_id", quest.getId()));
+            linkObject.addProperty("id", QuestObjectBase.getCodeString(questLink.getId()));
+            linkObject.addProperty("chapter_id", QuestObjectBase.getCodeString(questLink.getParentID()));
+            questLink.getQuest().ifPresent(quest ->
+                    linkObject.addProperty("linked_quest_id", QuestObjectBase.getCodeString(quest.getId())));
             linkObject.addProperty("x", questLink.getX());
             linkObject.addProperty("y", questLink.getY());
             linkObject.addProperty("width", questLink.getWidth());
@@ -113,7 +115,7 @@ public final class FtbQuestsIntegration {
         }
 
         JsonObject result = new JsonObject();
-        result.addProperty("chapter_id", chapter.getId());
+        result.addProperty("chapter_id", QuestObjectBase.getCodeString(chapter.getId()));
         result.addProperty("title", chapter.getTitle().getString());
         result.addProperty("default_quest_size", chapter.getDefaultQuestSize());
         result.addProperty("default_quest_shape", chapter.getDefaultQuestShape());

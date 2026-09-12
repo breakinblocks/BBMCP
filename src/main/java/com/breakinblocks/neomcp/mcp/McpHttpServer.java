@@ -266,12 +266,9 @@ public final class McpHttpServer implements AutoCloseable {
                 "z",
                 "radius"));
         tools.add(questGuiTool());
-        tools.add(tool(
+        tools.add(ftbQuestIdTool(
                 "get_chapter_layout",
-                "Return the FTB Quests chapter quest nodes, coordinates, sizes, and dependency links.",
-                "chapter_id",
-                "integer",
-                true));
+                "Return the FTB Quests chapter quest nodes, coordinates, sizes, and dependency links."));
         tools.add(tool("take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         tools.add(tool("update_take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         JsonObject result = new JsonObject();
@@ -443,7 +440,7 @@ public final class McpHttpServer implements AutoCloseable {
 
     private JsonObject openQuestGui(JsonObject arguments) throws Exception {
         requireOnlyArguments(arguments, "id", "object_type");
-        long id = requiredLong(arguments, "id", "open_quest_gui");
+        long id = requiredFtbQuestId(arguments, "id", "open_quest_gui");
         String objectType = requiredString(arguments, "object_type", "open_quest_gui");
         if (!"chapter".equals(objectType) && !"quest".equals(objectType)) {
             throw new InvalidParamsException("open_quest_gui object_type must be 'chapter' or 'quest'");
@@ -474,7 +471,7 @@ public final class McpHttpServer implements AutoCloseable {
 
     private JsonObject getChapterLayout(JsonObject arguments) throws Exception {
         requireOnlyArguments(arguments, "chapter_id");
-        long chapterId = requiredLong(arguments, "chapter_id", "get_chapter_layout");
+        long chapterId = requiredFtbQuestId(arguments, "chapter_id", "get_chapter_layout");
         try {
             JsonObject chapterLayout = toolExecutor.getChapterLayout(chapterId);
             JsonObject result = textToolResult(chapterLayout.toString());
@@ -601,10 +598,10 @@ public final class McpHttpServer implements AutoCloseable {
     private JsonObject questGuiTool() {
         JsonObject result = tool(
                 "open_quest_gui",
-                "Open an FTB Quests chapter or quest by numeric ID.");
+                "Open an FTB Quests chapter or quest by an exact 16-character hexadecimal FTB Quest code string.");
         JsonObject schema = result.getAsJsonObject("inputSchema");
         JsonObject properties = new JsonObject();
-        properties.add("id", integerSchema());
+        properties.add("id", ftbQuestIdSchema());
         JsonObject objectType = stringSchema();
         JsonArray enumValues = new JsonArray();
         enumValues.add("chapter");
@@ -617,6 +614,26 @@ public final class McpHttpServer implements AutoCloseable {
         required.add("object_type");
         schema.add("required", required);
         return result;
+    }
+
+    private JsonObject ftbQuestIdTool(String name, String description) {
+        JsonObject result = tool(name, description);
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        properties.add("chapter_id", ftbQuestIdSchema());
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("chapter_id");
+        schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject ftbQuestIdSchema() {
+        JsonObject schema = stringSchema();
+        schema.addProperty("pattern", "^[0-9A-Fa-f]{16}$");
+        schema.addProperty("minLength", 16);
+        schema.addProperty("maxLength", 16);
+        return schema;
     }
 
     private JsonObject integerSchema() {
@@ -661,15 +678,17 @@ public final class McpHttpServer implements AutoCloseable {
         return value.getAsString();
     }
 
-    private long requiredLong(JsonObject arguments, String name, String toolName) throws InvalidParamsException {
-        JsonElement value = arguments.get(name);
-        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
-            throw new InvalidParamsException(toolName + " requires an integer " + name);
+    private long requiredFtbQuestId(JsonObject arguments, String name, String toolName)
+            throws InvalidParamsException {
+        String value = requiredString(arguments, name, toolName);
+        if (!value.matches("[0-9A-Fa-f]{16}")) {
+            throw new InvalidParamsException(
+                    toolName + " requires " + name + " to be an exact 16-character hexadecimal FTB Quest code string");
         }
         try {
-            return new BigDecimal(value.getAsString()).toBigIntegerExact().longValueExact();
-        } catch (ArithmeticException | NumberFormatException exception) {
-            throw new InvalidParamsException(toolName + " requires an integer " + name);
+            return Long.parseUnsignedLong(value, 16);
+        } catch (NumberFormatException exception) {
+            throw new InvalidParamsException(toolName + " received an invalid FTB Quest code string for " + name);
         }
     }
 
