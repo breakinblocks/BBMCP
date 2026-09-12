@@ -269,9 +269,7 @@ public final class McpHttpServer implements AutoCloseable {
         tools.add(ftbQuestIdTool(
                 "get_chapter_layout",
                 "Return the FTB Quests chapter quest nodes, coordinates, sizes, and dependency links."));
-        tools.add(ftbQuestIdTool(
-                "export_chapter_canvas",
-                "Render an entire FTB Quests chapter canvas as a single PNG image."));
+        tools.add(exportChapterCanvasTool());
         tools.add(tool("take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         tools.add(tool("update_take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         JsonObject result = new JsonObject();
@@ -487,10 +485,11 @@ public final class McpHttpServer implements AutoCloseable {
     }
 
     private JsonObject exportChapterCanvas(JsonObject arguments) throws Exception {
-        requireOnlyArguments(arguments, "chapter_id");
+        requireOnlyArguments(arguments, "chapter_id", "save_png");
         long chapterId = requiredFtbQuestId(arguments, "chapter_id", "export_chapter_canvas");
+        boolean savePng = optionalBoolean(arguments, "save_png", "export_chapter_canvas");
         try {
-            JsonObject export = toolExecutor.exportChapterCanvas(chapterId);
+            JsonObject export = toolExecutor.exportChapterCanvas(chapterId, savePng);
             JsonElement encodedImage = export.get("png_base64");
             if (encodedImage == null || !encodedImage.isJsonPrimitive()
                     || !encodedImage.getAsJsonPrimitive().isString()
@@ -632,6 +631,12 @@ public final class McpHttpServer implements AutoCloseable {
         return schema;
     }
 
+    private JsonObject booleanSchema() {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "boolean");
+        return schema;
+    }
+
     private JsonObject questGuiTool() {
         JsonObject result = tool(
                 "open_quest_gui",
@@ -662,6 +667,15 @@ public final class McpHttpServer implements AutoCloseable {
         JsonArray required = new JsonArray();
         required.add("chapter_id");
         schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject exportChapterCanvasTool() {
+        JsonObject result = ftbQuestIdTool(
+                "export_chapter_canvas",
+                "Render an entire FTB Quests chapter canvas as a single PNG image, optionally saving it to screenshots.");
+        JsonObject properties = result.getAsJsonObject("inputSchema").getAsJsonObject("properties");
+        properties.add("save_png", booleanSchema());
         return result;
     }
 
@@ -744,6 +758,18 @@ public final class McpHttpServer implements AutoCloseable {
             throw new InvalidParamsException(toolName + " requires a finite number " + name);
         }
         return result;
+    }
+
+    private boolean optionalBoolean(JsonObject arguments, String name, String toolName)
+            throws InvalidParamsException {
+        JsonElement value = arguments.get(name);
+        if (value == null) {
+            return false;
+        }
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isBoolean()) {
+            throw new InvalidParamsException(toolName + " requires a boolean " + name);
+        }
+        return value.getAsBoolean();
     }
 
     private JsonObject emptySchema() {

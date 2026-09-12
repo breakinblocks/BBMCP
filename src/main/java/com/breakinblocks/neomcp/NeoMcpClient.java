@@ -387,12 +387,12 @@ public final class NeoMcpClient {
         }
 
         @Override
-        public JsonObject exportChapterCanvas(long chapterId) throws Exception {
+        public JsonObject exportChapterCanvas(long chapterId, boolean savePng) throws Exception {
             return callOnClientThread(() -> {
                 if (!ModList.get().isLoaded("ftbquests")) {
                     throw new IllegalStateException("FTB Quests is not loaded in this client");
                 }
-                return FtbQuestsIntegration.exportChapterCanvas(chapterId);
+                return FtbQuestsIntegration.exportChapterCanvas(chapterId, savePng);
             });
         }
 
