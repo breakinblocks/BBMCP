@@ -30,6 +30,7 @@ public final class McpHttpServer implements AutoCloseable {
     private static final int PORT = 8080;
     private static final int REQUEST_THREAD_COUNT = 4;
     private static final int REQUEST_QUEUE_CAPACITY = 16;
+    private static final double MAX_NEARBY_ENTITY_RADIUS = 512.0D;
     private static final JsonElement JSON_NULL = JsonNull.INSTANCE;
     private static final String JSON_CONTENT_TYPE = "application/json; charset=utf-8";
     private final Gson gson = new Gson();
@@ -256,7 +257,14 @@ public final class McpHttpServer implements AutoCloseable {
                 "registry",
                 "namespace"));
         tools.add(tool("read_latest_logs", "Return the last 100 lines of the active Minecraft logs/latest.log file."));
-        tools.add(tool("inject_kubejs_script", "Write JavaScript to KubeJS server_scripts and dispatch /reload." , "script", "string", true));
+        tools.add(tool("inject_kubejs_script", "Write JavaScript to KubeJS server_scripts and dispatch /reload.", "script", "string", true));
+        tools.add(numericPropertiesTool(
+                "get_nearby_entities",
+                "Return entities and state data within a radius of a coordinate.",
+                "x",
+                "y",
+                "z",
+                "radius"));
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -284,6 +292,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "query_registry" -> queryRegistry(arguments);
             case "read_latest_logs" -> readLatestLogs(arguments);
             case "inject_kubejs_script" -> injectKubejsScript(arguments);
+            case "get_nearby_entities" -> getNearbyEntities(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
     }
@@ -400,6 +409,26 @@ public final class McpHttpServer implements AutoCloseable {
         }
     }
 
+    private JsonObject getNearbyEntities(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "x", "y", "z", "radius");
+        double x = requiredNumber(arguments, "x", "get_nearby_entities");
+        double y = requiredNumber(arguments, "y", "get_nearby_entities");
+        double z = requiredNumber(arguments, "z", "get_nearby_entities");
+        double radius = requiredNumber(arguments, "radius", "get_nearby_entities");
+        if (radius < 0.0D || radius > MAX_NEARBY_ENTITY_RADIUS) {
+            throw new InvalidParamsException(
+                    "get_nearby_entities radius must be between 0 and " + MAX_NEARBY_ENTITY_RADIUS);
+        }
+        try {
+            JsonObject nearby = toolExecutor.getNearbyEntities(x, y, z, radius);
+            JsonObject result = textToolResult(nearby.toString());
+            result.add("structuredContent", nearby);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Nearby entity query failed: " + errorMessage(exception));
+        }
+    }
+
     private JsonObject textToolResult(String text) {
         JsonArray content = new JsonArray();
         JsonObject contentItem = new JsonObject();
@@ -483,6 +512,36 @@ public final class McpHttpServer implements AutoCloseable {
         return schema;
     }
 
+    private JsonObject numericPropertiesTool(
+            String name,
+            String description,
+            String firstProperty,
+            String secondProperty,
+            String thirdProperty,
+            String fourthProperty) {
+        JsonObject result = tool(name, description);
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        properties.add(firstProperty, numberSchema());
+        properties.add(secondProperty, numberSchema());
+        properties.add(thirdProperty, numberSchema());
+        properties.add(fourthProperty, numberSchema());
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add(firstProperty);
+        required.add(secondProperty);
+        required.add(thirdProperty);
+        required.add(fourthProperty);
+        schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject numberSchema() {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "number");
+        return schema;
+    }
+
     private JsonObject integerSchema() {
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "integer");
@@ -523,6 +582,23 @@ public final class McpHttpServer implements AutoCloseable {
             throw new InvalidParamsException(toolName + " requires a non-blank string " + name);
         }
         return value.getAsString();
+    }
+
+    private double requiredNumber(JsonObject arguments, String name, String toolName) throws InvalidParamsException {
+        JsonElement value = arguments.get(name);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw new InvalidParamsException(toolName + " requires a number " + name);
+        }
+        double result;
+        try {
+            result = value.getAsDouble();
+        } catch (NumberFormatException exception) {
+            throw new InvalidParamsException(toolName + " requires a finite number " + name);
+        }
+        if (!Double.isFinite(result)) {
+            throw new InvalidParamsException(toolName + " requires a finite number " + name);
+        }
+        return result;
     }
 
     private JsonObject emptySchema() {

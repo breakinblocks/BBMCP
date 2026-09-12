@@ -1,8 +1,8 @@
 package com.breakinblocks.neomcp;
 
 import com.breakinblocks.neomcp.mcp.McpHttpServer;
-import com.breakinblocks.neomcp.mcp.McpToolExecutor;
 import com.breakinblocks.neomcp.mcp.McpNbtJson;
+import com.breakinblocks.neomcp.mcp.McpToolExecutor;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
@@ -13,33 +13,35 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
-import com.breakinblocks.neomcp.mcp.McpNbtJson;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.Comparator;
-import java.util.ArrayDeque;
-import java.util.List;
 import java.io.BufferedReader;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 @EventBusSubscriber(modid = NeoMcp.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class NeoMcpClient {
@@ -284,6 +286,74 @@ public final class NeoMcpClient {
             result.addProperty("reload_command", "/reload");
             result.addProperty("reload_dispatched", true);
             return result;
+        }
+
+        @Override
+        public JsonObject getNearbyEntities(double x, double y, double z, double radius) throws Exception {
+            return callOnClientThread(() -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                Level level = minecraft.level;
+                if (level == null) {
+                    throw new IllegalStateException("Minecraft client level is unavailable");
+                }
+                AABB area = new AABB(
+                        x - radius,
+                        y - radius,
+                        z - radius,
+                        x + radius,
+                        y + radius,
+                        z + radius);
+                List<Entity> entities = new ArrayList<>(level.getEntities(
+                        (Entity) null,
+                        area,
+                        entity -> true));
+                entities.sort(Comparator.comparing(entity -> entity.getUUID().toString()));
+
+                JsonArray entityData = new JsonArray();
+                for (Entity entity : entities) {
+                    ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+                    if (typeId == null) {
+                        throw new IllegalStateException("Entity type is not registered: " + entity.getType());
+                    }
+                    BlockPos blockPosition = entity.blockPosition();
+                    CompoundTag state = entity.saveWithoutId(new CompoundTag());
+                    JsonObject data = new JsonObject();
+                    data.addProperty("type", typeId.toString());
+                    data.addProperty("uuid", entity.getUUID().toString());
+                    data.addProperty("x", entity.getX());
+                    data.addProperty("y", entity.getY());
+                    data.addProperty("z", entity.getZ());
+                    data.addProperty("block_x", blockPosition.getX());
+                    data.addProperty("block_y", blockPosition.getY());
+                    data.addProperty("block_z", blockPosition.getZ());
+                    data.addProperty("yaw", entity.getYRot());
+                    data.addProperty("pitch", entity.getXRot());
+                    data.addProperty("on_ground", entity.onGround());
+                    data.addProperty("alive", entity.isAlive());
+                    data.addProperty("removed", entity.isRemoved());
+                    if (entity.hasCustomName()) {
+                        data.addProperty("custom_name", entity.getCustomName().getString());
+                    }
+                    if (entity instanceof LivingEntity livingEntity) {
+                        data.addProperty("health", livingEntity.getHealth());
+                        data.addProperty("max_health", livingEntity.getMaxHealth());
+                        data.addProperty("dead_or_dying", livingEntity.isDeadOrDying());
+                    }
+                    data.add("state", McpNbtJson.toJson(state));
+                    data.addProperty("state_snbt", state.toString());
+                    entityData.add(data);
+                }
+
+                JsonObject result = new JsonObject();
+                result.addProperty("dimension", level.dimension().location().toString());
+                result.addProperty("center_x", x);
+                result.addProperty("center_y", y);
+                result.addProperty("center_z", z);
+                result.addProperty("radius", radius);
+                result.addProperty("count", entityData.size());
+                result.add("entities", entityData);
+                return result;
+            });
         }
 
         private String blockEntityTypeId(BlockEntityType<?> type) {

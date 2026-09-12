@@ -16,4 +16,6 @@ public interface McpToolExecutor {
     JsonObject readLatestLogs() throws Exception;
 
     JsonObject injectKubejsScript(String script) throws Exception;
+
+    JsonObject getNearbyEntities(double x, double y, double z, double radius) throws Exception;
 }
