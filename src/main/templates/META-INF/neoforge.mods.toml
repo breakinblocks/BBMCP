@@ -29,3 +29,10 @@ type = "optional"
 versionRange = "[2101.1.0,)"
 ordering = "AFTER"
 side = "CLIENT"
+
+[[dependencies."${mod_id}"]]
+modId = "kubejs"
+type = "optional"
+versionRange = "[2101.7.1-build.181,)"
+ordering = "AFTER"
+side = "BOTH"

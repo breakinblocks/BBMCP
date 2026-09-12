@@ -70,11 +70,26 @@ repositories {
     maven {
         url = uri('https://maven.architectury.dev')
     }
+    maven {
+        url = uri('https://maven.latvian.dev/releases')
+        content {
+            includeGroup 'dev.latvian.mods'
+            includeGroup 'dev.latvian.apps'
+        }
+    }
+    maven {
+        url = uri('https://jitpack.io')
+        content {
+            includeGroup 'com.github.rtyley'
+        }
+    }
 }
 
 dependencies {
     compileOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.0'
     runtimeOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.0'
+    compileOnly 'dev.latvian.mods:kubejs-neoforge:2101.7.1-build.181'
+    runtimeOnly 'dev.latvian.mods:kubejs-neoforge:2101.7.1-build.181'
 }
 
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {

@@ -30,6 +30,8 @@ internet-facing server and currently has no authentication layer.
 
 FTB Quests is included as a development runtime dependency from the FTB Maven
 repository. The mod remains loadable without FTB Quests in other environments.
+KubeJS 2101.7.1-build.181 is also included only for the development runtime;
+the published NeoMCP dependency is optional.
 
 ## Build and run
 
@@ -147,6 +149,30 @@ registry-aware `LootTable.DIRECT_CODEC` for JSON serialization.
 | --- | --- | --- |
 | `inject_kubejs_script` | `{ "script": string }` | Writes `kubejs/server_scripts/neomcp_injected.js` and dispatches `/reload`. Requires KubeJS to be loaded. |
 
+When KubeJS is loaded, NeoMCP registers the `NeoMcpEvents.register` server
+event. Register pack-specific MCP tools during the event:
+
+```js
+NeoMcpEvents.register(event => {
+  event.registerTool(
+    'current_dimension',
+    'Return the active server dimension.',
+    {
+      type: 'object'
+    },
+     context => {
+       return { dimension: String(context.level.dimension) }
+     }
+  )
+})
+```
+
+The callback receives a context containing the current `server`, `level`, and
+JSON `arguments`. The callback runs on the Minecraft server thread. KubeJS
+tools are rebuilt on every server-script load, including `/reload`; the active
+HTTP server advertises `tools.listChanged` and sends
+`notifications/tools/list_changed` to connected `text/event-stream` clients.
+
 ### FTB Quests
 
 | Tool | Arguments | Result |
@@ -192,7 +218,10 @@ client API.
 
 - `NeoMcpClient` owns the client-thread bridge and game-state operations.
 - `McpHttpServer` provides loopback HTTP transport and MCP JSON-RPC dispatch.
+- `McpDynamicToolRegistry` publishes KubeJS tools atomically between reloads.
 - `McpToolExecutor` defines the extensible tool boundary.
+- `com.breakinblocks.neomcp.kubejs` contains the optional KubeJS plugin, event,
+  and Rhino callback bridge.
 - `FtbQuestsIntegration` isolates optional FTB Quests GUI, layout, and canvas
   rendering code.
 - `McpNbtJson` converts Minecraft NBT and data components into JSON-safe

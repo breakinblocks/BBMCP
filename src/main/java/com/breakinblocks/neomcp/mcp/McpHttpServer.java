@@ -19,27 +19,39 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class McpHttpServer implements AutoCloseable {
     private static final int MAX_REQUEST_BYTES = 1024 * 1024;
     private static final int PORT = 8080;
-    private static final int REQUEST_THREAD_COUNT = 4;
+    private static final int REQUEST_THREAD_COUNT = 8;
     private static final int REQUEST_QUEUE_CAPACITY = 16;
+    private static final int SSE_CONNECTION_LIMIT = 8;
+    private static final int SSE_QUEUE_CAPACITY = 32;
+    private static final long SSE_HEARTBEAT_SECONDS = 15L;
     private static final double MAX_NEARBY_ENTITY_RADIUS = 512.0D;
     private static final JsonElement JSON_NULL = JsonNull.INSTANCE;
     private static final String JSON_CONTENT_TYPE = "application/json; charset=utf-8";
     private final Gson gson = new Gson();
     private final McpToolExecutor toolExecutor;
+    private final McpDynamicToolRegistry dynamicToolRegistry;
+    private final CopyOnWriteArrayList<SseClient> sseClients = new CopyOnWriteArrayList<>();
+    private final AtomicInteger sseConnectionCount = new AtomicInteger();
+    private static volatile McpHttpServer activeServer;
     private HttpServer server;
     private ExecutorService requestExecutor;
+    private ExecutorService sseExecutor;
 
     public McpHttpServer(McpToolExecutor toolExecutor) {
         this.toolExecutor = Objects.requireNonNull(toolExecutor, "toolExecutor");
+        this.dynamicToolRegistry = McpDynamicToolRegistry.INSTANCE;
     }
 
     public synchronized void start() throws IOException {
@@ -55,15 +67,36 @@ public final class McpHttpServer implements AutoCloseable {
                 new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITY),
                 namedDaemonThreadFactory(),
                 new ThreadPoolExecutor.AbortPolicy());
+        ExecutorService newSseExecutor = new ThreadPoolExecutor(
+                SSE_CONNECTION_LIMIT,
+                SSE_CONNECTION_LIMIT,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new SynchronousQueue<>(),
+                namedDaemonThreadFactory("NeoMCP-sse-"),
+                new ThreadPoolExecutor.AbortPolicy());
         try {
             newServer.createContext("/mcp", this::handleRequest);
             newServer.setExecutor(newRequestExecutor);
+            sseExecutor = newSseExecutor;
             newServer.start();
+            synchronized (McpHttpServer.class) {
+                if (activeServer != null) {
+                    newServer.stop(0);
+                    newRequestExecutor.shutdownNow();
+                    newSseExecutor.shutdownNow();
+                    sseExecutor = null;
+                    throw new IllegalStateException("Another NeoMCP HTTP server is already active");
+                }
+                activeServer = this;
+            }
             server = newServer;
             requestExecutor = newRequestExecutor;
         } catch (RuntimeException exception) {
+            sseExecutor = null;
             newServer.stop(0);
             newRequestExecutor.shutdownNow();
+            newSseExecutor.shutdownNow();
             throw exception;
         }
     }
@@ -72,24 +105,70 @@ public final class McpHttpServer implements AutoCloseable {
     public synchronized void close() {
         HttpServer activeServer = server;
         ExecutorService activeRequestExecutor = requestExecutor;
+        ExecutorService activeSseExecutor = sseExecutor;
         server = null;
         requestExecutor = null;
+        sseExecutor = null;
+        for (SseClient client : sseClients) {
+            client.close();
+        }
+        sseClients.clear();
+        sseConnectionCount.set(0);
+        synchronized (McpHttpServer.class) {
+            if (McpHttpServer.activeServer == this) {
+                McpHttpServer.activeServer = null;
+            }
+        }
         if (activeServer != null) {
             activeServer.stop(0);
         }
         if (activeRequestExecutor != null) {
             activeRequestExecutor.shutdownNow();
         }
+        if (activeSseExecutor != null) {
+            activeSseExecutor.shutdownNow();
+        }
+    }
+
+    public static void broadcastToolsListChanged() {
+        McpHttpServer active = McpHttpServer.activeServer;
+        if (active != null) {
+            active.broadcastToolsListChangedInternal();
+        }
+    }
+
+    private void broadcastToolsListChangedInternal() {
+        JsonObject notification = new JsonObject();
+        notification.addProperty("jsonrpc", "2.0");
+        notification.addProperty("method", "notifications/tools/list_changed");
+        notification.add("params", new JsonObject());
+        for (SseClient client : sseClients) {
+            try {
+                client.send(notification);
+            } catch (IOException exception) {
+                removeSseClient(client);
+                client.close();
+            }
+        }
     }
 
     private void handleRequest(HttpExchange exchange) throws IOException {
+        boolean handedOff = false;
         try {
             if (!"/mcp".equals(exchange.getRequestURI().getPath())) {
                 sendEmptyResponse(exchange, 404);
                 return;
             }
+            if (!isAllowedOrigin(exchange.getRequestHeaders().getFirst("Origin"))) {
+                sendEmptyResponse(exchange, 403);
+                return;
+            }
+            if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                handedOff = handleEventStream(exchange);
+                return;
+            }
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                exchange.getResponseHeaders().set("Allow", "POST");
+                exchange.getResponseHeaders().set("Allow", "GET, POST");
                 sendEmptyResponse(exchange, 405);
                 return;
             }
@@ -97,11 +176,6 @@ public final class McpHttpServer implements AutoCloseable {
                 sendEmptyResponse(exchange, 415);
                 return;
             }
-            if (!isAllowedOrigin(exchange.getRequestHeaders().getFirst("Origin"))) {
-                sendEmptyResponse(exchange, 403);
-                return;
-            }
-
             String requestBody;
             try (InputStream input = exchange.getRequestBody()) {
                 requestBody = readRequestBody(input);
@@ -117,8 +191,110 @@ public final class McpHttpServer implements AutoCloseable {
                 output.write(response);
             }
         } finally {
+            if (!handedOff) {
+                exchange.close();
+            }
+        }
+    }
+
+    private boolean handleEventStream(HttpExchange exchange) throws IOException {
+        if (!acceptsEventStream(exchange.getRequestHeaders().getFirst("Accept"))) {
+            exchange.getResponseHeaders().set("Allow", "GET, POST");
+            sendEmptyResponse(exchange, 406);
+            return false;
+        }
+        if (!tryReserveSseConnection()) {
+            sendEmptyResponse(exchange, 429);
+            return false;
+        }
+        ExecutorService activeSseExecutor = sseExecutor;
+        if (activeSseExecutor == null) {
+            sseConnectionCount.decrementAndGet();
+            throw new IllegalStateException("MCP event stream executor is not running");
+        }
+        SseClient client = null;
+        boolean submitted = false;
+        try {
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream; charset=utf-8");
+            exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+            exchange.getResponseHeaders().set("Connection", "keep-alive");
+            exchange.sendResponseHeaders(200, 0);
+            client = new SseClient(exchange.getResponseBody());
+            SseClient acceptedClient = client;
+            sseClients.add(acceptedClient);
+            activeSseExecutor.execute(() -> runEventStream(exchange, acceptedClient));
+            submitted = true;
+            return true;
+        } catch (RuntimeException | IOException exception) {
+            if (client != null) {
+                removeSseClient(client);
+                client.close();
+            } else {
+                sseConnectionCount.decrementAndGet();
+            }
+            throw exception;
+        } finally {
+            if (!submitted && client != null) {
+                exchange.close();
+            }
+        }
+    }
+
+    private void runEventStream(HttpExchange exchange, SseClient client) {
+        try {
+            client.sendComment();
+            while (!client.isClosed()) {
+                String message = client.awaitMessage(SSE_HEARTBEAT_SECONDS, TimeUnit.SECONDS);
+                if (message == null) {
+                    client.sendHeartbeat();
+                } else {
+                    client.write(message);
+                }
+            }
+        } catch (IOException exception) {
+            // The peer disconnected or the bounded event queue rejected a notification.
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        } finally {
+            removeSseClient(client);
+            client.close();
             exchange.close();
         }
+    }
+
+    private boolean tryReserveSseConnection() {
+        while (true) {
+            int current = sseConnectionCount.get();
+            if (current >= SSE_CONNECTION_LIMIT) {
+                return false;
+            }
+            if (sseConnectionCount.compareAndSet(current, current + 1)) {
+                return true;
+            }
+        }
+    }
+
+    private void removeSseClient(SseClient client) {
+        if (sseClients.remove(client)) {
+            sseConnectionCount.decrementAndGet();
+        }
+    }
+
+    private boolean acceptsEventStream(String acceptHeader) {
+        if (acceptHeader == null) {
+            return false;
+        }
+        for (String mediaRange : acceptHeader.split(",")) {
+            String mediaType = mediaRange.trim();
+            int parameterStart = mediaType.indexOf(';');
+            if (parameterStart >= 0) {
+                mediaType = mediaType.substring(0, parameterStart).trim();
+            }
+            if ("text/event-stream".equalsIgnoreCase(mediaType) || "*/*".equals(mediaType)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void sendEmptyResponse(HttpExchange exchange, int status) throws IOException {
@@ -228,7 +404,9 @@ public final class McpHttpServer implements AutoCloseable {
         JsonObject result = new JsonObject();
         result.addProperty("protocolVersion", "2024-11-05");
         JsonObject capabilities = new JsonObject();
-        capabilities.add("tools", new JsonObject());
+        JsonObject toolsCapabilities = new JsonObject();
+        toolsCapabilities.addProperty("listChanged", true);
+        capabilities.add("tools", toolsCapabilities);
         result.add("capabilities", capabilities);
         JsonObject serverInfo = new JsonObject();
         serverInfo.addProperty("name", "NeoMCP");
@@ -285,6 +463,13 @@ public final class McpHttpServer implements AutoCloseable {
         tools.add(exportChapterCanvasTool());
         tools.add(tool("take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         tools.add(tool("update_take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
+        for (McpDynamicTool dynamicTool : dynamicToolRegistry.snapshot().values()) {
+            JsonObject definition = new JsonObject();
+            definition.addProperty("name", dynamicTool.name());
+            definition.addProperty("description", dynamicTool.description());
+            definition.add("inputSchema", dynamicTool.inputSchema().deepCopy());
+            tools.add(definition);
+        }
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -320,8 +505,25 @@ public final class McpHttpServer implements AutoCloseable {
             case "get_chapter_layout" -> getChapterLayout(arguments);
             case "export_chapter_canvas" -> exportChapterCanvas(arguments);
             case "take_screenshot", "update_take_screenshot" -> takeScreenshot(arguments);
-            default -> throw new InvalidParamsException("Unknown tool: " + name);
+            default -> callDynamicTool(name, arguments);
         };
+    }
+
+    private JsonObject callDynamicTool(String name, JsonObject arguments) throws InvalidParamsException {
+        McpDynamicTool dynamicTool = dynamicToolRegistry.snapshot().get(name);
+        if (dynamicTool == null) {
+            throw new InvalidParamsException("Unknown tool: " + name);
+        }
+        try {
+            JsonElement output = dynamicToolRegistry.call(name, arguments);
+            JsonObject result = textToolResult(output.toString());
+            if (output.isJsonObject()) {
+                result.add("structuredContent", output);
+            }
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Dynamic tool '" + name + "' failed: " + errorMessage(exception));
+        }
     }
 
     private JsonObject executeCommand(JsonObject arguments) throws Exception {
@@ -840,12 +1042,67 @@ public final class McpHttpServer implements AutoCloseable {
     }
 
     private ThreadFactory namedDaemonThreadFactory() {
+        return namedDaemonThreadFactory("NeoMCP-http-");
+    }
+
+    private ThreadFactory namedDaemonThreadFactory(String namePrefix) {
         AtomicInteger threadNumber = new AtomicInteger();
         return runnable -> {
-            Thread thread = new Thread(runnable, "NeoMCP-http-" + threadNumber.incrementAndGet());
+            Thread thread = new Thread(runnable, namePrefix + threadNumber.incrementAndGet());
             thread.setDaemon(true);
             return thread;
         };
+    }
+
+    private static final class SseClient {
+        private final OutputStream output;
+        private final ArrayBlockingQueue<String> messages = new ArrayBlockingQueue<>(SSE_QUEUE_CAPACITY);
+        private final AtomicBoolean closed = new AtomicBoolean();
+
+        private SseClient(OutputStream output) {
+            this.output = output;
+        }
+
+        private void sendComment() throws IOException {
+            write(": neomcp connected\n\n");
+        }
+
+        private void send(JsonObject message) throws IOException {
+            if (closed.get()) {
+                throw new IOException("MCP event stream is closed");
+            }
+            if (!messages.offer("data: " + message + "\n\n")) {
+                throw new IOException("MCP event stream queue is full");
+            }
+        }
+
+        private String awaitMessage(long timeout, TimeUnit unit) throws InterruptedException {
+            return messages.poll(timeout, unit);
+        }
+
+        private void sendHeartbeat() throws IOException {
+            write(": keep-alive\n\n");
+        }
+
+        private void write(String message) throws IOException {
+            output.write(message.getBytes(StandardCharsets.UTF_8));
+            output.flush();
+        }
+
+        private boolean isClosed() {
+            return closed.get();
+        }
+
+        private void close() {
+            if (closed.compareAndSet(false, true)) {
+                messages.clear();
+                try {
+                    output.close();
+                } catch (IOException ignored) {
+                    // The stream is already being closed.
+                }
+            }
+        }
     }
 
     private static final class RequestTooLargeException extends Exception {
