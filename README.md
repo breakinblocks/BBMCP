@@ -128,6 +128,19 @@ Invoke-RestMethod -Uri http://localhost:8080/mcp -Method Post `
 | `read_latest_logs` | none | The last 100 lines of `logs/latest.log`. |
 | `get_nearby_entities` | `{ "x": number, "y": number, "z": number, "radius": number }` | Entity state and serialized data in the requested area. Radius is limited to 512 blocks. |
 
+### Datapack and loot tables
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `list_loot_tables` | none | All loot-table ResourceLocations loaded by the active integrated server. |
+| `get_loot_table` | `{ "loot_table_id": string }` | The exact serialized JSON definition of one loaded loot table. |
+| `search_loot_tables` | `{ "item_id": string }` | Loaded loot-table IDs whose definitions contain the requested item ID. |
+
+Loot tables are server-side data. These tools require an active local
+single-player/integrated server and return an explicit error in menus or
+multiplayer. They read the 1.21.1 reloadable loot registry and use the
+registry-aware `LootTable.DIRECT_CODEC` for JSON serialization.
+
 ### KubeJS
 
 | Tool | Arguments | Result |

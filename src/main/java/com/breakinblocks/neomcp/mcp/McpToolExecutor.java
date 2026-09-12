@@ -19,6 +19,12 @@ public interface McpToolExecutor {
 
     JsonObject getNearbyEntities(double x, double y, double z, double radius) throws Exception;
 
+    JsonObject listLootTables() throws Exception;
+
+    JsonObject getLootTable(String lootTableId) throws Exception;
+
+    JsonObject searchLootTables(String itemId) throws Exception;
+
     JsonObject openQuestGui(long id, String objectType) throws Exception;
 
     JsonObject getChapterLayout(long chapterId) throws Exception;

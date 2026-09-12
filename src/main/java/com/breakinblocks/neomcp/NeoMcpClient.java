@@ -6,28 +6,35 @@ import com.breakinblocks.neomcp.mcp.McpToolExecutor;
 import com.breakinblocks.neomcp.ftbquests.FtbQuestsIntegration;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -367,6 +374,83 @@ public final class NeoMcpClient {
         }
 
         @Override
+        public JsonObject listLootTables() throws Exception {
+            return callOnClientThread(() -> {
+                MinecraftServer server = requireIntegratedServer();
+                return callOnServerThread(server, () -> {
+                    RegistryAccess.Frozen registries = server.reloadableRegistries().get();
+                    HolderLookup.RegistryLookup<LootTable> lootTables =
+                            registries.lookupOrThrow(Registries.LOOT_TABLE);
+                    List<ResourceLocation> ids = lootTables.listElementIds()
+                            .map(key -> key.location())
+                            .sorted(Comparator.comparing(ResourceLocation::toString))
+                            .toList();
+                    JsonArray lootTableIds = new JsonArray();
+                    for (ResourceLocation id : ids) {
+                        lootTableIds.add(id.toString());
+                    }
+                    JsonObject result = new JsonObject();
+                    result.addProperty("count", lootTableIds.size());
+                    result.add("loot_tables", lootTableIds);
+                    return result;
+                });
+            });
+        }
+
+        @Override
+        public JsonObject getLootTable(String lootTableId) throws Exception {
+            return callOnClientThread(() -> {
+                MinecraftServer server = requireIntegratedServer();
+                return callOnServerThread(server, () -> {
+                    ResourceLocation id = parseResourceLocation(lootTableId, "loot table");
+                    RegistryAccess.Frozen registries = server.reloadableRegistries().get();
+                    HolderLookup.RegistryLookup<LootTable> lootTables =
+                            registries.lookupOrThrow(Registries.LOOT_TABLE);
+                    ResourceKey<LootTable> key = ResourceKey.create(Registries.LOOT_TABLE, id);
+                    LootTable table = lootTables.get(key)
+                            .map(holder -> holder.value())
+                            .orElseThrow(() -> new IllegalArgumentException("Unknown loot table: " + id));
+                    JsonObject result = new JsonObject();
+                    result.addProperty("id", id.toString());
+                    result.add("table", encodeLootTable(registries, id, table));
+                    return result;
+                });
+            });
+        }
+
+        @Override
+        public JsonObject searchLootTables(String itemId) throws Exception {
+            return callOnClientThread(() -> {
+                MinecraftServer server = requireIntegratedServer();
+                return callOnServerThread(server, () -> {
+                    ResourceLocation item = parseResourceLocation(itemId, "item");
+                    RegistryAccess.Frozen registries = server.reloadableRegistries().get();
+                    HolderLookup.RegistryLookup<LootTable> lootTables =
+                            registries.lookupOrThrow(Registries.LOOT_TABLE);
+                    List<ResourceKey<LootTable>> keys = lootTables.listElementIds()
+                            .sorted(Comparator.comparing(key -> key.location().toString()))
+                            .toList();
+                    JsonArray matches = new JsonArray();
+                    for (ResourceKey<LootTable> key : keys) {
+                        LootTable table = lootTables.get(key)
+                                .map(holder -> holder.value())
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "Loot table registry entry disappeared during search: " + key.location()));
+                        JsonElement json = encodeLootTable(registries, key.location(), table);
+                        if (containsItemIdentifier(json, item.toString())) {
+                            matches.add(key.location().toString());
+                        }
+                    }
+                    JsonObject result = new JsonObject();
+                    result.addProperty("item_id", item.toString());
+                    result.addProperty("count", matches.size());
+                    result.add("loot_tables", matches);
+                    return result;
+                });
+            });
+        }
+
+        @Override
         public JsonObject openQuestGui(long id, String objectType) throws Exception {
             return callOnClientThread(() -> {
                 if (!ModList.get().isLoaded("ftbquests")) {
@@ -452,6 +536,64 @@ public final class NeoMcpClient {
             return key.toString();
         }
 
+        private MinecraftServer requireIntegratedServer() {
+            MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+            if (server == null) {
+                throw new IllegalStateException("No integrated server is running; loot tables are server-side data");
+            }
+            return server;
+        }
+
+        private ResourceLocation parseResourceLocation(String value, String description) {
+            ResourceLocation id = ResourceLocation.tryParse(value);
+            if (id == null) {
+                throw new IllegalArgumentException("Invalid " + description + " ResourceLocation: " + value);
+            }
+            return id;
+        }
+
+        private JsonElement encodeLootTable(
+                RegistryAccess.Frozen registries,
+                ResourceLocation id,
+                LootTable table) {
+            return LootTable.DIRECT_CODEC.encodeStart(
+                            registries.createSerializationContext(JsonOps.INSTANCE),
+                            table)
+                    .getOrThrow(error -> new IllegalStateException(
+                            "Unable to encode loot table " + id + ": " + error));
+        }
+
+        private boolean containsItemIdentifier(JsonElement element, String itemId) {
+            if (element.isJsonObject()) {
+                JsonObject object = element.getAsJsonObject();
+                for (String key : object.keySet()) {
+                    JsonElement value = object.get(key);
+                    if (isItemIdentifierKey(key)
+                            && value.isJsonPrimitive()
+                            && value.getAsJsonPrimitive().isString()
+                            && itemId.equals(value.getAsString())) {
+                        return true;
+                    }
+                    if (containsItemIdentifier(value, itemId)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            if (element.isJsonArray()) {
+                for (JsonElement value : element.getAsJsonArray()) {
+                    if (containsItemIdentifier(value, itemId)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private boolean isItemIdentifierKey(String key) {
+            return "name".equals(key) || "item".equals(key) || "id".equals(key);
+        }
+
         private void runOnClientThread(ThrowingAction action) throws Exception {
             callOnClientThread(() -> {
                 action.run();
@@ -491,9 +633,48 @@ public final class NeoMcpClient {
                 throw new TimeoutException("Minecraft client action timed out after it started; outcome is unknown");
             }
         }
+
+        private <T> T callOnServerThread(MinecraftServer server, ServerAction<T> action) throws Exception {
+            if (server.isSameThread()) {
+                return action.call();
+            }
+            AtomicReference<ServerActionState> state = new AtomicReference<>(ServerActionState.QUEUED);
+            CompletableFuture<T> result = new CompletableFuture<>();
+            server.execute(() -> {
+                if (!state.compareAndSet(ServerActionState.QUEUED, ServerActionState.RUNNING)) {
+                    return;
+                }
+                try {
+                    result.complete(action.call());
+                } catch (Exception exception) {
+                    result.completeExceptionally(exception);
+                } finally {
+                    state.set(ServerActionState.COMPLETED);
+                }
+            });
+            try {
+                return result.get(CLIENT_ACTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                state.compareAndSet(ServerActionState.QUEUED, ServerActionState.CANCELLED);
+                Thread.currentThread().interrupt();
+                throw exception;
+            } catch (TimeoutException exception) {
+                if (state.compareAndSet(ServerActionState.QUEUED, ServerActionState.CANCELLED)) {
+                    throw new TimeoutException("Minecraft server action timed out before it started");
+                }
+                throw new TimeoutException("Minecraft server action timed out after it started; outcome is unknown");
+            }
+        }
     }
 
     private enum ClientActionState {
+        QUEUED,
+        RUNNING,
+        COMPLETED,
+        CANCELLED
+    }
+
+    private enum ServerActionState {
         QUEUED,
         RUNNING,
         COMPLETED,
@@ -507,6 +688,11 @@ public final class NeoMcpClient {
 
     @FunctionalInterface
     private interface ClientAction<T> {
+        T call() throws Exception;
+    }
+
+    @FunctionalInterface
+    private interface ServerAction<T> {
         T call() throws Exception;
     }
 }

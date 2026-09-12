@@ -265,6 +265,19 @@ public final class McpHttpServer implements AutoCloseable {
                 "y",
                 "z",
                 "radius"));
+        tools.add(tool("list_loot_tables", "List all loot tables loaded by the active integrated server."));
+        tools.add(tool(
+                "get_loot_table",
+                "Return the raw JSON definition of a loaded loot table.",
+                "loot_table_id",
+                "string",
+                true));
+        tools.add(tool(
+                "search_loot_tables",
+                "Find loaded loot tables whose definitions contain an item ID.",
+                "item_id",
+                "string",
+                true));
         tools.add(questGuiTool());
         tools.add(ftbQuestIdTool(
                 "get_chapter_layout",
@@ -300,6 +313,9 @@ public final class McpHttpServer implements AutoCloseable {
             case "read_latest_logs" -> readLatestLogs(arguments);
             case "inject_kubejs_script" -> injectKubejsScript(arguments);
             case "get_nearby_entities" -> getNearbyEntities(arguments);
+            case "list_loot_tables" -> listLootTables(arguments);
+            case "get_loot_table" -> getLootTable(arguments);
+            case "search_loot_tables" -> searchLootTables(arguments);
             case "open_quest_gui" -> openQuestGui(arguments);
             case "get_chapter_layout" -> getChapterLayout(arguments);
             case "export_chapter_canvas" -> exportChapterCanvas(arguments);
@@ -437,6 +453,50 @@ public final class McpHttpServer implements AutoCloseable {
             return result;
         } catch (Exception exception) {
             return toolErrorResult("Nearby entity query failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject listLootTables(JsonObject arguments) throws Exception {
+        if (!arguments.isEmpty()) {
+            throw new InvalidParamsException("list_loot_tables does not accept arguments");
+        }
+        try {
+            JsonObject lootTables = toolExecutor.listLootTables();
+            JsonObject result = textToolResult(lootTables.toString());
+            result.add("structuredContent", lootTables);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Loot table listing failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject getLootTable(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "loot_table_id");
+        String lootTableId = requiredString(arguments, "loot_table_id", "get_loot_table");
+        try {
+            JsonObject lootTable = toolExecutor.getLootTable(lootTableId);
+            JsonElement rawJson = lootTable.get("table");
+            if (rawJson == null || rawJson.isJsonNull()) {
+                throw new IllegalStateException("Loot table response did not include raw JSON");
+            }
+            JsonObject result = textToolResult(rawJson.toString());
+            result.add("structuredContent", lootTable);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Loot table lookup failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject searchLootTables(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "item_id");
+        String itemId = requiredString(arguments, "item_id", "search_loot_tables");
+        try {
+            JsonObject matches = toolExecutor.searchLootTables(itemId);
+            JsonObject result = textToolResult(matches.toString());
+            result.add("structuredContent", matches);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Loot table search failed: " + errorMessage(exception));
         }
     }
 
