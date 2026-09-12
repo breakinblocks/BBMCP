@@ -25,6 +25,7 @@ neoForge {
     runs {
         client {
             client()
+            programArguments.addAll '--quickPlaySingleplayer', 'New World'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
