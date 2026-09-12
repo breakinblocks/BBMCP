@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -244,6 +245,9 @@ public final class McpHttpServer implements AutoCloseable {
         player.addProperty("description", "Return the local player's position, dimension, and health.");
         player.add("inputSchema", emptySchema());
         tools.add(player);
+        tools.add(coordinateTool(
+                "get_block_entity_data",
+                "Return the block entity's full metadata and data components at a block position."));
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -266,6 +270,7 @@ public final class McpHttpServer implements AutoCloseable {
         return switch (name) {
             case "execute_command" -> executeCommand(arguments);
             case "get_player_info" -> getPlayerInfo(arguments);
+            case "get_block_entity_data" -> getBlockEntityData(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
     }
@@ -309,6 +314,21 @@ public final class McpHttpServer implements AutoCloseable {
         }
     }
 
+    private JsonObject getBlockEntityData(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "x", "y", "z");
+        int x = requiredInteger(arguments, "x");
+        int y = requiredInteger(arguments, "y");
+        int z = requiredInteger(arguments, "z");
+        try {
+            JsonObject blockEntityData = toolExecutor.getBlockEntityData(x, y, z);
+            JsonObject result = textToolResult(blockEntityData.toString());
+            result.add("structuredContent", blockEntityData);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Block entity data unavailable: " + errorMessage(exception));
+        }
+    }
+
     private JsonObject textToolResult(String text) {
         JsonArray content = new JsonArray();
         JsonObject contentItem = new JsonObject();
@@ -333,10 +353,8 @@ public final class McpHttpServer implements AutoCloseable {
     }
 
     private JsonObject tool(String name, String description, String property, String type, boolean required) {
-        JsonObject result = new JsonObject();
-        result.addProperty("name", name);
-        result.addProperty("description", description);
-        JsonObject schema = emptySchema();
+        JsonObject result = tool(name, description);
+        JsonObject schema = result.getAsJsonObject("inputSchema");
         JsonObject properties = new JsonObject();
         JsonObject value = new JsonObject();
         value.addProperty("type", type);
@@ -347,8 +365,64 @@ public final class McpHttpServer implements AutoCloseable {
             requiredProperties.add(property);
             schema.add("required", requiredProperties);
         }
-        result.add("inputSchema", schema);
         return result;
+    }
+
+    private JsonObject tool(String name, String description) {
+        JsonObject result = new JsonObject();
+        result.addProperty("name", name);
+        result.addProperty("description", description);
+        result.add("inputSchema", emptySchema());
+        return result;
+    }
+
+    private JsonObject coordinateTool(String name, String description) {
+        JsonObject result = tool(name, description);
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        properties.add("x", integerSchema());
+        properties.add("y", integerSchema());
+        properties.add("z", integerSchema());
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("x");
+        required.add("y");
+        required.add("z");
+        schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject integerSchema() {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "integer");
+        return schema;
+    }
+
+    private void requireOnlyArguments(JsonObject arguments, String... allowedNames) throws InvalidParamsException {
+        for (String name : arguments.keySet()) {
+            boolean allowed = false;
+            for (String allowedName : allowedNames) {
+                if (allowedName.equals(name)) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if (!allowed) {
+                throw new InvalidParamsException("Unexpected argument: " + name);
+            }
+        }
+    }
+
+    private int requiredInteger(JsonObject arguments, String name) throws InvalidParamsException {
+        JsonElement value = arguments.get(name);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw new InvalidParamsException("get_block_entity_data requires an integer " + name);
+        }
+        try {
+            return new BigDecimal(value.getAsString()).toBigIntegerExact().intValueExact();
+        } catch (ArithmeticException | NumberFormatException exception) {
+            throw new InvalidParamsException("get_block_entity_data requires an integer " + name);
+        }
     }
 
     private JsonObject emptySchema() {

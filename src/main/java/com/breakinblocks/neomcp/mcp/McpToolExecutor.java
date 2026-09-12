@@ -6,4 +6,6 @@ public interface McpToolExecutor {
     void executeCommand(String command) throws Exception;
 
     JsonObject getPlayerInfo() throws Exception;
+
+    JsonObject getBlockEntityData(int x, int y, int z) throws Exception;
 }

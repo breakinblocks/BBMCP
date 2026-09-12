@@ -6,10 +6,19 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+
+import com.breakinblocks.neomcp.mcp.McpNbtJson;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
@@ -78,6 +87,46 @@ public final class NeoMcpClient {
                 info.addProperty("health", player.getHealth());
                 return info;
             });
+        }
+
+        @Override
+        public JsonObject getBlockEntityData(int x, int y, int z) throws Exception {
+            return callOnClientThread(() -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                Level level = minecraft.level;
+                if (level == null) {
+                    throw new IllegalStateException("Minecraft client level is unavailable");
+                }
+                BlockPos position = new BlockPos(x, y, z);
+                BlockEntity blockEntity = level.getBlockEntity(position);
+                if (blockEntity == null) {
+                    throw new IllegalStateException("No block entity exists at " + position);
+                }
+
+                CompoundTag fullMetadata = blockEntity.saveWithFullMetadata(level.registryAccess());
+                DataComponentMap components = blockEntity.components();
+                Tag componentData = McpNbtJson.encodeDataComponents(components, level.registryAccess());
+                JsonObject result = new JsonObject();
+                JsonObject coordinates = new JsonObject();
+                coordinates.addProperty("x", x);
+                coordinates.addProperty("y", y);
+                coordinates.addProperty("z", z);
+                result.add("position", coordinates);
+                result.addProperty("type", blockEntityTypeId(blockEntity.getType()));
+                result.add("nbt", McpNbtJson.toJson(fullMetadata));
+                result.addProperty("snbt", fullMetadata.toString());
+                result.add("data_components", McpNbtJson.toJson(componentData));
+                result.addProperty("data_components_snbt", componentData.toString());
+                return result;
+            });
+        }
+
+        private String blockEntityTypeId(BlockEntityType<?> type) {
+            net.minecraft.resources.ResourceLocation key = BlockEntityType.getKey(type);
+            if (key == null) {
+                throw new IllegalStateException("Block entity type is not registered: " + type);
+            }
+            return key.toString();
         }
 
         private void runOnClientThread(ThrowingAction action) throws Exception {
