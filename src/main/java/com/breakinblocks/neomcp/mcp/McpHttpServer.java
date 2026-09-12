@@ -248,6 +248,8 @@ public final class McpHttpServer implements AutoCloseable {
         tools.add(coordinateTool(
                 "get_block_entity_data",
                 "Return the block entity's full metadata and data components at a block position."));
+        JsonObject item = tool("inspect_item_components", "Return the local player's main-hand item state and exact data components.");
+        tools.add(item);
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -271,6 +273,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "execute_command" -> executeCommand(arguments);
             case "get_player_info" -> getPlayerInfo(arguments);
             case "get_block_entity_data" -> getBlockEntityData(arguments);
+            case "inspect_item_components" -> inspectItemComponents(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
     }
@@ -326,6 +329,20 @@ public final class McpHttpServer implements AutoCloseable {
             return result;
         } catch (Exception exception) {
             return toolErrorResult("Block entity data unavailable: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject inspectItemComponents(JsonObject arguments) throws Exception {
+        if (!arguments.isEmpty()) {
+            throw new InvalidParamsException("inspect_item_components does not accept arguments");
+        }
+        try {
+            JsonObject itemData = toolExecutor.inspectItemComponents();
+            JsonObject result = textToolResult(itemData.toString());
+            result.add("structuredContent", itemData);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Held item information unavailable: " + errorMessage(exception));
         }
     }
 

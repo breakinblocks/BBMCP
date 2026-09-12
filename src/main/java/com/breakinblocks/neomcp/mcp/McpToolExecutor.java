@@ -8,4 +8,6 @@ public interface McpToolExecutor {
     JsonObject getPlayerInfo() throws Exception;
 
     JsonObject getBlockEntityData(int x, int y, int z) throws Exception;
+
+    JsonObject inspectItemComponents() throws Exception;
 }

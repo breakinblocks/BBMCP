@@ -8,8 +8,12 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -117,6 +121,45 @@ public final class NeoMcpClient {
                 result.addProperty("snbt", fullMetadata.toString());
                 result.add("data_components", McpNbtJson.toJson(componentData));
                 result.addProperty("data_components_snbt", componentData.toString());
+                return result;
+            });
+        }
+
+        @Override
+        public JsonObject inspectItemComponents() throws Exception {
+            return callOnClientThread(() -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                LocalPlayer player = minecraft.player;
+                if (player == null) {
+                    throw new IllegalStateException("Minecraft local player is unavailable");
+                }
+                Level level = minecraft.level;
+                if (level == null) {
+                    throw new IllegalStateException("Minecraft client level is unavailable");
+                }
+
+                ItemStack itemStack = player.getMainHandItem();
+                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem());
+                if (itemId == null) {
+                    throw new IllegalStateException("Held item is not registered: " + itemStack.getItem());
+                }
+                Tag stackData = itemStack.save(level.registryAccess());
+                DataComponentMap components = itemStack.getComponents();
+                DataComponentPatch patch = itemStack.getComponentsPatch();
+                Tag componentData = McpNbtJson.encodeDataComponents(components, level.registryAccess());
+                Tag patchData = McpNbtJson.encodeDataComponentPatch(patch, level.registryAccess());
+                JsonObject result = new JsonObject();
+                result.addProperty("item", itemId.toString());
+                result.addProperty("count", itemStack.getCount());
+                result.addProperty("max_count", itemStack.getMaxStackSize());
+                result.addProperty("empty", itemStack.isEmpty());
+                result.addProperty("name", itemStack.getHoverName().getString());
+                result.add("stack", McpNbtJson.toJson(stackData));
+                result.addProperty("stack_snbt", stackData.toString());
+                result.add("data_components", McpNbtJson.toJson(componentData));
+                result.addProperty("data_components_snbt", componentData.toString());
+                result.add("data_components_patch", McpNbtJson.toJson(patchData));
+                result.addProperty("data_components_patch_snbt", patchData.toString());
                 return result;
             });
         }
