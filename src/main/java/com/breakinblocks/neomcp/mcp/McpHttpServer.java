@@ -255,6 +255,7 @@ public final class McpHttpServer implements AutoCloseable {
                 "List registered object IDs in a registry filtered by namespace.",
                 "registry",
                 "namespace"));
+        tools.add(tool("read_latest_logs", "Return the last 100 lines of the active Minecraft logs/latest.log file."));
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -280,6 +281,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "get_block_entity_data" -> getBlockEntityData(arguments);
             case "inspect_item_components" -> inspectItemComponents(arguments);
             case "query_registry" -> queryRegistry(arguments);
+            case "read_latest_logs" -> readLatestLogs(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
     }
@@ -366,6 +368,20 @@ public final class McpHttpServer implements AutoCloseable {
             return result;
         } catch (Exception exception) {
             return toolErrorResult("Registry query failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject readLatestLogs(JsonObject arguments) throws Exception {
+        if (!arguments.isEmpty()) {
+            throw new InvalidParamsException("read_latest_logs does not accept arguments");
+        }
+        try {
+            JsonObject logs = toolExecutor.readLatestLogs();
+            JsonObject result = textToolResult(logs.get("text").getAsString());
+            result.add("structuredContent", logs);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Latest logs unavailable: " + errorMessage(exception));
         }
     }
 

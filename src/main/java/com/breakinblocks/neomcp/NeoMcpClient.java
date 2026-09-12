@@ -33,7 +33,12 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.Comparator;
+import java.util.ArrayDeque;
 import java.util.List;
+import java.io.BufferedReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @EventBusSubscriber(modid = NeoMcp.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class NeoMcpClient {
@@ -203,6 +208,39 @@ public final class NeoMcpClient {
                 result.add("objects", objects);
                 return result;
             });
+        }
+
+        @Override
+        public JsonObject readLatestLogs() throws Exception {
+            Path logPath = Minecraft.getInstance().gameDirectory.toPath()
+                    .resolve("logs")
+                    .resolve("latest.log")
+                    .normalize();
+            if (!Files.isRegularFile(logPath)) {
+                throw new IllegalStateException("Latest log file is unavailable: " + logPath);
+            }
+
+            ArrayDeque<String> lastLines = new ArrayDeque<>(100);
+            try (BufferedReader reader = Files.newBufferedReader(logPath, StandardCharsets.UTF_8)) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (lastLines.size() == 100) {
+                        lastLines.removeFirst();
+                    }
+                    lastLines.addLast(line);
+                }
+            }
+
+            JsonArray lines = new JsonArray();
+            for (String line : lastLines) {
+                lines.add(line);
+            }
+            JsonObject result = new JsonObject();
+            result.addProperty("path", logPath.toString());
+            result.addProperty("line_count", lines.size());
+            result.add("lines", lines);
+            result.addProperty("text", String.join("\n", lastLines));
+            return result;
         }
 
         private String blockEntityTypeId(BlockEntityType<?> type) {

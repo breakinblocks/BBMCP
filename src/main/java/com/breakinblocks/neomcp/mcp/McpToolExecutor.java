@@ -12,4 +12,6 @@ public interface McpToolExecutor {
     JsonObject inspectItemComponents() throws Exception;
 
     JsonObject queryRegistry(String registryName, String namespace) throws Exception;
+
+    JsonObject readLatestLogs() throws Exception;
 }
