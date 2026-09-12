@@ -20,4 +20,6 @@ public interface McpToolExecutor {
     JsonObject getNearbyEntities(double x, double y, double z, double radius) throws Exception;
 
     JsonObject openQuestGui(long id, String objectType) throws Exception;
+
+    JsonObject takeScreenshot() throws Exception;
 }

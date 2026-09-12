@@ -6,7 +6,11 @@ import com.breakinblocks.neomcp.mcp.McpToolExecutor;
 import com.breakinblocks.neomcp.ftbquests.FtbQuestsIntegration;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -44,6 +48,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.UUID;
 
 @EventBusSubscriber(modid = NeoMcp.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class NeoMcpClient {
@@ -252,6 +257,9 @@ public final class NeoMcpClient {
 
         @Override
         public JsonObject injectKubejsScript(String script) throws Exception {
+            if (!ModList.get().isLoaded("kubejs")) {
+                throw new IllegalStateException("KubeJS is not loaded in this client");
+            }
             if (script == null || script.isBlank()) {
                 throw new IllegalArgumentException("KubeJS script must be non-blank");
             }
@@ -365,6 +373,54 @@ public final class NeoMcpClient {
                     throw new IllegalStateException("FTB Quests is not loaded in this client");
                 }
                 return FtbQuestsIntegration.openQuestGui(id, objectType);
+            });
+        }
+
+        @Override
+        public JsonObject takeScreenshot() throws Exception {
+            return callOnClientThread(() -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                if (!RenderSystem.isOnRenderThread()) {
+                    throw new IllegalStateException("Screenshot capture is not running on the render thread");
+                }
+                RenderTarget renderTarget = minecraft.getMainRenderTarget();
+                if (renderTarget.width <= 0 || renderTarget.height <= 0) {
+                    throw new IllegalStateException("Minecraft main framebuffer has no drawable dimensions");
+                }
+
+                Path screenshotDirectory = minecraft.gameDirectory.toPath()
+                        .toAbsolutePath()
+                        .normalize()
+                        .resolve("screenshots")
+                        .normalize();
+                Files.createDirectories(screenshotDirectory);
+                String fileName = "neomcp_" + UUID.randomUUID() + ".png";
+                Path screenshotPath = screenshotDirectory.resolve(fileName).normalize();
+                if (!screenshotDirectory.equals(screenshotPath.getParent())) {
+                    throw new IllegalStateException("Screenshot path escaped its target directory");
+                }
+                if (Files.exists(screenshotPath)) {
+                    throw new IllegalStateException("Screenshot output path already exists: " + screenshotPath);
+                }
+
+                boolean screenActive = minecraft.screen != null;
+                NativeImage image = Screenshot.takeScreenshot(renderTarget);
+                try {
+                    image.writeToFile(screenshotPath);
+                } finally {
+                    image.close();
+                }
+                if (!Files.isRegularFile(screenshotPath) || Files.size(screenshotPath) == 0L) {
+                    throw new IllegalStateException("Screenshot file was not written: " + screenshotPath);
+                }
+
+                JsonObject result = new JsonObject();
+                result.addProperty("path", screenshotPath.toString());
+                result.addProperty("screen_active", screenActive);
+                result.addProperty("ui_included", screenActive);
+                result.addProperty("width", renderTarget.width);
+                result.addProperty("height", renderTarget.height);
+                return result;
             });
         }
 

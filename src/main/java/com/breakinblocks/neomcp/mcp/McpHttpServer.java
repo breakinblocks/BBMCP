@@ -266,6 +266,8 @@ public final class McpHttpServer implements AutoCloseable {
                 "z",
                 "radius"));
         tools.add(questGuiTool());
+        tools.add(tool("take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
+        tools.add(tool("update_take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -295,6 +297,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "inject_kubejs_script" -> injectKubejsScript(arguments);
             case "get_nearby_entities" -> getNearbyEntities(arguments);
             case "open_quest_gui" -> openQuestGui(arguments);
+            case "take_screenshot", "update_take_screenshot" -> takeScreenshot(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
     }
@@ -445,6 +448,20 @@ public final class McpHttpServer implements AutoCloseable {
             return result;
         } catch (Exception exception) {
             return toolErrorResult("FTB Quests GUI could not be opened: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject takeScreenshot(JsonObject arguments) throws Exception {
+        if (!arguments.isEmpty()) {
+            throw new InvalidParamsException("take_screenshot does not accept arguments");
+        }
+        try {
+            JsonObject screenshot = toolExecutor.takeScreenshot();
+            JsonObject result = textToolResult(screenshot.toString());
+            result.add("structuredContent", screenshot);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Screenshot capture failed: " + errorMessage(exception));
         }
     }
 
