@@ -377,6 +377,16 @@ public final class NeoMcpClient {
         }
 
         @Override
+        public JsonObject getChapterLayout(long chapterId) throws Exception {
+            return callOnClientThread(() -> {
+                if (!ModList.get().isLoaded("ftbquests")) {
+                    throw new IllegalStateException("FTB Quests is not loaded in this client");
+                }
+                return FtbQuestsIntegration.getChapterLayout(chapterId);
+            });
+        }
+
+        @Override
         public JsonObject takeScreenshot() throws Exception {
             return callOnClientThread(() -> {
                 Minecraft minecraft = Minecraft.getInstance();

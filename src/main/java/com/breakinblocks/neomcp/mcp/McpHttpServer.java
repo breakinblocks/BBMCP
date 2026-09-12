@@ -266,6 +266,12 @@ public final class McpHttpServer implements AutoCloseable {
                 "z",
                 "radius"));
         tools.add(questGuiTool());
+        tools.add(tool(
+                "get_chapter_layout",
+                "Return the FTB Quests chapter quest nodes, coordinates, sizes, and dependency links.",
+                "chapter_id",
+                "integer",
+                true));
         tools.add(tool("take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         tools.add(tool("update_take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         JsonObject result = new JsonObject();
@@ -297,6 +303,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "inject_kubejs_script" -> injectKubejsScript(arguments);
             case "get_nearby_entities" -> getNearbyEntities(arguments);
             case "open_quest_gui" -> openQuestGui(arguments);
+            case "get_chapter_layout" -> getChapterLayout(arguments);
             case "take_screenshot", "update_take_screenshot" -> takeScreenshot(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
@@ -462,6 +469,19 @@ public final class McpHttpServer implements AutoCloseable {
             return result;
         } catch (Exception exception) {
             return toolErrorResult("Screenshot capture failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject getChapterLayout(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "chapter_id");
+        long chapterId = requiredLong(arguments, "chapter_id", "get_chapter_layout");
+        try {
+            JsonObject chapterLayout = toolExecutor.getChapterLayout(chapterId);
+            JsonObject result = textToolResult(chapterLayout.toString());
+            result.add("structuredContent", chapterLayout);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("FTB Quests chapter layout unavailable: " + errorMessage(exception));
         }
     }
 

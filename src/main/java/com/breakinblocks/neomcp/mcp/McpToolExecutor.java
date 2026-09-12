@@ -21,5 +21,7 @@ public interface McpToolExecutor {
 
     JsonObject openQuestGui(long id, String objectType) throws Exception;
 
+    JsonObject getChapterLayout(long chapterId) throws Exception;
+
     JsonObject takeScreenshot() throws Exception;
 }
