@@ -2,11 +2,15 @@ package com.breakinblocks.neomcp;
 
 import com.breakinblocks.neomcp.mcp.McpHttpServer;
 import com.breakinblocks.neomcp.mcp.McpToolExecutor;
+import com.breakinblocks.neomcp.mcp.McpNbtJson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.nbt.CompoundTag;
@@ -28,6 +32,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.Comparator;
+import java.util.List;
 
 @EventBusSubscriber(modid = NeoMcp.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class NeoMcpClient {
@@ -143,7 +149,7 @@ public final class NeoMcpClient {
                 if (itemId == null) {
                     throw new IllegalStateException("Held item is not registered: " + itemStack.getItem());
                 }
-                Tag stackData = itemStack.save(level.registryAccess());
+                Tag stackData = itemStack.saveOptional(level.registryAccess());
                 DataComponentMap components = itemStack.getComponents();
                 DataComponentPatch patch = itemStack.getComponentsPatch();
                 Tag componentData = McpNbtJson.encodeDataComponents(components, level.registryAccess());
@@ -160,6 +166,41 @@ public final class NeoMcpClient {
                 result.addProperty("data_components_snbt", componentData.toString());
                 result.add("data_components_patch", McpNbtJson.toJson(patchData));
                 result.addProperty("data_components_patch_snbt", patchData.toString());
+                return result;
+            });
+        }
+
+        @Override
+        public JsonObject queryRegistry(String registryName, String namespace) throws Exception {
+            return callOnClientThread(() -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                Level level = minecraft.level;
+                if (level == null) {
+                    throw new IllegalStateException("Minecraft client level is unavailable");
+                }
+                ResourceLocation registryId = ResourceLocation.tryParse(registryName);
+                if (registryId == null) {
+                    throw new IllegalArgumentException("Invalid registry name: " + registryName);
+                }
+                Registry<?> registry = level.registryAccess().registries()
+                        .filter(entry -> entry.key().location().equals(registryId))
+                        .map(RegistryAccess.RegistryEntry::value)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Registry is unavailable in the current level: " + registryId));
+                List<ResourceLocation> objectIds = registry.keySet().stream()
+                        .filter(id -> namespace.equals(id.getNamespace()))
+                        .sorted(Comparator.comparing(ResourceLocation::toString))
+                        .toList();
+                JsonArray objects = new JsonArray();
+                for (ResourceLocation objectId : objectIds) {
+                    objects.add(objectId.toString());
+                }
+                JsonObject result = new JsonObject();
+                result.addProperty("registry", registryId.toString());
+                result.addProperty("namespace", namespace);
+                result.addProperty("count", objectIds.size());
+                result.add("objects", objects);
                 return result;
             });
         }

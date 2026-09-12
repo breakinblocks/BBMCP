@@ -250,6 +250,11 @@ public final class McpHttpServer implements AutoCloseable {
                 "Return the block entity's full metadata and data components at a block position."));
         JsonObject item = tool("inspect_item_components", "Return the local player's main-hand item state and exact data components.");
         tools.add(item);
+        tools.add(stringPropertiesTool(
+                "query_registry",
+                "List registered object IDs in a registry filtered by namespace.",
+                "registry",
+                "namespace"));
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -274,6 +279,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "get_player_info" -> getPlayerInfo(arguments);
             case "get_block_entity_data" -> getBlockEntityData(arguments);
             case "inspect_item_components" -> inspectItemComponents(arguments);
+            case "query_registry" -> queryRegistry(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
     }
@@ -346,6 +352,23 @@ public final class McpHttpServer implements AutoCloseable {
         }
     }
 
+    private JsonObject queryRegistry(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "registry", "namespace");
+        String registry = requiredString(arguments, "registry", "query_registry");
+        String namespace = requiredString(arguments, "namespace", "query_registry");
+        if (!net.minecraft.resources.ResourceLocation.isValidNamespace(namespace)) {
+            throw new InvalidParamsException("query_registry requires a valid namespace");
+        }
+        try {
+            JsonObject registryData = toolExecutor.queryRegistry(registry, namespace);
+            JsonObject result = textToolResult(registryData.toString());
+            result.add("structuredContent", registryData);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Registry query failed: " + errorMessage(exception));
+        }
+    }
+
     private JsonObject textToolResult(String text) {
         JsonArray content = new JsonArray();
         JsonObject contentItem = new JsonObject();
@@ -409,6 +432,26 @@ public final class McpHttpServer implements AutoCloseable {
         return result;
     }
 
+    private JsonObject stringPropertiesTool(String name, String description, String firstProperty, String secondProperty) {
+        JsonObject result = tool(name, description);
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        properties.add(firstProperty, stringSchema());
+        properties.add(secondProperty, stringSchema());
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add(firstProperty);
+        required.add(secondProperty);
+        schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject stringSchema() {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "string");
+        return schema;
+    }
+
     private JsonObject integerSchema() {
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "integer");
@@ -440,6 +483,15 @@ public final class McpHttpServer implements AutoCloseable {
         } catch (ArithmeticException | NumberFormatException exception) {
             throw new InvalidParamsException("get_block_entity_data requires an integer " + name);
         }
+    }
+
+    private String requiredString(JsonObject arguments, String name, String toolName) throws InvalidParamsException {
+        JsonElement value = arguments.get(name);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()
+                || value.getAsString().isBlank()) {
+            throw new InvalidParamsException(toolName + " requires a non-blank string " + name);
+        }
+        return value.getAsString();
     }
 
     private JsonObject emptySchema() {

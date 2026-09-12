@@ -10,4 +10,6 @@ public interface McpToolExecutor {
     JsonObject getBlockEntityData(int x, int y, int z) throws Exception;
 
     JsonObject inspectItemComponents() throws Exception;
+
+    JsonObject queryRegistry(String registryName, String namespace) throws Exception;
 }
