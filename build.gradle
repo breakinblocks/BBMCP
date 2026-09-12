@@ -62,7 +62,17 @@ neoForge {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
+repositories {
+    maven {
+        url = uri('https://maven.ftb.dev/releases')
+    }
+    maven {
+        url = uri('https://maven.architectury.dev')
+    }
+}
+
 dependencies {
+    compileOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.0'
 }
 
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {

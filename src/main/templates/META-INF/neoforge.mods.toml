@@ -22,3 +22,10 @@ type = "required"
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "ftbquests"
+type = "optional"
+versionRange = "[2101.1.0,)"
+ordering = "AFTER"
+side = "CLIENT"

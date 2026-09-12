@@ -18,4 +18,6 @@ public interface McpToolExecutor {
     JsonObject injectKubejsScript(String script) throws Exception;
 
     JsonObject getNearbyEntities(double x, double y, double z, double radius) throws Exception;
+
+    JsonObject openQuestGui(long id, String objectType) throws Exception;
 }

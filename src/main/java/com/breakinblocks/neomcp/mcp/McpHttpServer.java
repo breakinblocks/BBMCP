@@ -265,6 +265,7 @@ public final class McpHttpServer implements AutoCloseable {
                 "y",
                 "z",
                 "radius"));
+        tools.add(questGuiTool());
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -293,6 +294,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "read_latest_logs" -> readLatestLogs(arguments);
             case "inject_kubejs_script" -> injectKubejsScript(arguments);
             case "get_nearby_entities" -> getNearbyEntities(arguments);
+            case "open_quest_gui" -> openQuestGui(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
     }
@@ -429,6 +431,23 @@ public final class McpHttpServer implements AutoCloseable {
         }
     }
 
+    private JsonObject openQuestGui(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "id", "object_type");
+        long id = requiredLong(arguments, "id", "open_quest_gui");
+        String objectType = requiredString(arguments, "object_type", "open_quest_gui");
+        if (!"chapter".equals(objectType) && !"quest".equals(objectType)) {
+            throw new InvalidParamsException("open_quest_gui object_type must be 'chapter' or 'quest'");
+        }
+        try {
+            JsonObject opened = toolExecutor.openQuestGui(id, objectType);
+            JsonObject result = textToolResult(opened.toString());
+            result.add("structuredContent", opened);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("FTB Quests GUI could not be opened: " + errorMessage(exception));
+        }
+    }
+
     private JsonObject textToolResult(String text) {
         JsonArray content = new JsonArray();
         JsonObject contentItem = new JsonObject();
@@ -542,6 +561,27 @@ public final class McpHttpServer implements AutoCloseable {
         return schema;
     }
 
+    private JsonObject questGuiTool() {
+        JsonObject result = tool(
+                "open_quest_gui",
+                "Open an FTB Quests chapter or quest by numeric ID.");
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        properties.add("id", integerSchema());
+        JsonObject objectType = stringSchema();
+        JsonArray enumValues = new JsonArray();
+        enumValues.add("chapter");
+        enumValues.add("quest");
+        objectType.add("enum", enumValues);
+        properties.add("object_type", objectType);
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("id");
+        required.add("object_type");
+        schema.add("required", required);
+        return result;
+    }
+
     private JsonObject integerSchema() {
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "integer");
@@ -582,6 +622,18 @@ public final class McpHttpServer implements AutoCloseable {
             throw new InvalidParamsException(toolName + " requires a non-blank string " + name);
         }
         return value.getAsString();
+    }
+
+    private long requiredLong(JsonObject arguments, String name, String toolName) throws InvalidParamsException {
+        JsonElement value = arguments.get(name);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw new InvalidParamsException(toolName + " requires an integer " + name);
+        }
+        try {
+            return new BigDecimal(value.getAsString()).toBigIntegerExact().longValueExact();
+        } catch (ArithmeticException | NumberFormatException exception) {
+            throw new InvalidParamsException(toolName + " requires an integer " + name);
+        }
     }
 
     private double requiredNumber(JsonObject arguments, String name, String toolName) throws InvalidParamsException {

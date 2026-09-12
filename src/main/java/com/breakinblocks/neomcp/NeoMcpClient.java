@@ -3,6 +3,7 @@ package com.breakinblocks.neomcp;
 import com.breakinblocks.neomcp.mcp.McpHttpServer;
 import com.breakinblocks.neomcp.mcp.McpNbtJson;
 import com.breakinblocks.neomcp.mcp.McpToolExecutor;
+import com.breakinblocks.neomcp.ftbquests.FtbQuestsIntegration;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
@@ -27,6 +28,7 @@ import net.minecraft.world.phys.AABB;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.io.BufferedReader;
@@ -353,6 +355,16 @@ public final class NeoMcpClient {
                 result.addProperty("count", entityData.size());
                 result.add("entities", entityData);
                 return result;
+            });
+        }
+
+        @Override
+        public JsonObject openQuestGui(long id, String objectType) throws Exception {
+            return callOnClientThread(() -> {
+                if (!ModList.get().isLoaded("ftbquests")) {
+                    throw new IllegalStateException("FTB Quests is not loaded in this client");
+                }
+                return FtbQuestsIntegration.openQuestGui(id, objectType);
             });
         }
 
