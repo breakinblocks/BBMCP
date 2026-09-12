@@ -73,6 +73,7 @@ repositories {
 
 dependencies {
     compileOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.0'
+    runtimeOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.0'
 }
 
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
