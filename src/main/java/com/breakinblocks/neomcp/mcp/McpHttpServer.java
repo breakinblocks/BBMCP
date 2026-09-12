@@ -256,6 +256,7 @@ public final class McpHttpServer implements AutoCloseable {
                 "registry",
                 "namespace"));
         tools.add(tool("read_latest_logs", "Return the last 100 lines of the active Minecraft logs/latest.log file."));
+        tools.add(tool("inject_kubejs_script", "Write JavaScript to KubeJS server_scripts and dispatch /reload." , "script", "string", true));
         JsonObject result = new JsonObject();
         result.add("tools", tools);
         return result;
@@ -282,6 +283,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "inspect_item_components" -> inspectItemComponents(arguments);
             case "query_registry" -> queryRegistry(arguments);
             case "read_latest_logs" -> readLatestLogs(arguments);
+            case "inject_kubejs_script" -> injectKubejsScript(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
     }
@@ -382,6 +384,19 @@ public final class McpHttpServer implements AutoCloseable {
             return result;
         } catch (Exception exception) {
             return toolErrorResult("Latest logs unavailable: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject injectKubejsScript(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "script");
+        String script = requiredString(arguments, "script", "inject_kubejs_script");
+        try {
+            JsonObject injection = toolExecutor.injectKubejsScript(script);
+            JsonObject result = textToolResult(injection.toString());
+            result.add("structuredContent", injection);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("KubeJS script injection failed: " + errorMessage(exception));
         }
     }
 

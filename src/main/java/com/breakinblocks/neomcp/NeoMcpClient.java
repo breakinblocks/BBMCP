@@ -39,6 +39,7 @@ import java.io.BufferedReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 @EventBusSubscriber(modid = NeoMcp.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class NeoMcpClient {
@@ -75,6 +76,8 @@ public final class NeoMcpClient {
     }
 
     private static final class MinecraftToolExecutor implements McpToolExecutor {
+        private static final String KUBEJS_SCRIPT_FILE = "neomcp_injected.js";
+
         @Override
         public void executeCommand(String command) throws Exception {
             runOnClientThread(() -> {
@@ -240,6 +243,46 @@ public final class NeoMcpClient {
             result.addProperty("line_count", lines.size());
             result.add("lines", lines);
             result.addProperty("text", String.join("\n", lastLines));
+            return result;
+        }
+
+        @Override
+        public JsonObject injectKubejsScript(String script) throws Exception {
+            if (script == null || script.isBlank()) {
+                throw new IllegalArgumentException("KubeJS script must be non-blank");
+            }
+
+            Path gameDirectory = Minecraft.getInstance().gameDirectory.toPath()
+                    .toAbsolutePath()
+                    .normalize();
+            Path scriptDirectory = gameDirectory.resolve("kubejs")
+                    .resolve("server_scripts")
+                    .normalize();
+            Path scriptPath = scriptDirectory.resolve(KUBEJS_SCRIPT_FILE).normalize();
+            if (!scriptDirectory.equals(scriptPath.getParent())) {
+                throw new IllegalStateException("KubeJS script path escaped its target directory");
+            }
+            Files.createDirectories(scriptDirectory);
+            Files.writeString(
+                    scriptPath,
+                    script,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE);
+
+            runOnClientThread(() -> {
+                ClientPacketListener connection = Minecraft.getInstance().getConnection();
+                if (connection == null) {
+                    throw new IllegalStateException("Minecraft client is not connected");
+                }
+                connection.sendCommand("reload");
+            });
+
+            JsonObject result = new JsonObject();
+            result.addProperty("script_path", scriptPath.toString());
+            result.addProperty("reload_command", "/reload");
+            result.addProperty("reload_dispatched", true);
             return result;
         }
 

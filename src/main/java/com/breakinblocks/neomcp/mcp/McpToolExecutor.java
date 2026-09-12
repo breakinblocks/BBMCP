@@ -14,4 +14,6 @@ public interface McpToolExecutor {
     JsonObject queryRegistry(String registryName, String namespace) throws Exception;
 
     JsonObject readLatestLogs() throws Exception;
+
+    JsonObject injectKubejsScript(String script) throws Exception;
 }
