@@ -1,0 +1,17 @@
+# IDE metadata
+.idea/
+*.iml
+
+# Gradle and generated build output
+.gradle/
+build/
+run/
+runs/
+src/generated/
+
+# Java and JVM output
+*.class
+hs_err_pid*
+
+# Keep the Gradle wrapper JAR under version control.
+!gradle/wrapper/gradle-wrapper.jar
