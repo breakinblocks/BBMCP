@@ -23,5 +23,7 @@ public interface McpToolExecutor {
 
     JsonObject getChapterLayout(long chapterId) throws Exception;
 
+    JsonObject exportChapterCanvas(long chapterId) throws Exception;
+
     JsonObject takeScreenshot() throws Exception;
 }

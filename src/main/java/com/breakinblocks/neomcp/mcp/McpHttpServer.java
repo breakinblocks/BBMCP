@@ -269,6 +269,9 @@ public final class McpHttpServer implements AutoCloseable {
         tools.add(ftbQuestIdTool(
                 "get_chapter_layout",
                 "Return the FTB Quests chapter quest nodes, coordinates, sizes, and dependency links."));
+        tools.add(ftbQuestIdTool(
+                "export_chapter_canvas",
+                "Render an entire FTB Quests chapter canvas as a single PNG image."));
         tools.add(tool("take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         tools.add(tool("update_take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         JsonObject result = new JsonObject();
@@ -301,6 +304,7 @@ public final class McpHttpServer implements AutoCloseable {
             case "get_nearby_entities" -> getNearbyEntities(arguments);
             case "open_quest_gui" -> openQuestGui(arguments);
             case "get_chapter_layout" -> getChapterLayout(arguments);
+            case "export_chapter_canvas" -> exportChapterCanvas(arguments);
             case "take_screenshot", "update_take_screenshot" -> takeScreenshot(arguments);
             default -> throw new InvalidParamsException("Unknown tool: " + name);
         };
@@ -482,6 +486,25 @@ public final class McpHttpServer implements AutoCloseable {
         }
     }
 
+    private JsonObject exportChapterCanvas(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "chapter_id");
+        long chapterId = requiredFtbQuestId(arguments, "chapter_id", "export_chapter_canvas");
+        try {
+            JsonObject export = toolExecutor.exportChapterCanvas(chapterId);
+            JsonElement encodedImage = export.get("png_base64");
+            if (encodedImage == null || !encodedImage.isJsonPrimitive()
+                    || !encodedImage.getAsJsonPrimitive().isString()
+                    || encodedImage.getAsString().isBlank()) {
+                throw new IllegalStateException("FTB Quests canvas export did not return a PNG payload");
+            }
+            JsonObject metadata = export.deepCopy();
+            metadata.remove("png_base64");
+            return imageToolResult(encodedImage.getAsString(), metadata);
+        } catch (Exception exception) {
+            return toolErrorResult("FTB Quests chapter canvas export failed: " + errorMessage(exception));
+        }
+    }
+
     private JsonObject textToolResult(String text) {
         JsonArray content = new JsonArray();
         JsonObject contentItem = new JsonObject();
@@ -491,6 +514,20 @@ public final class McpHttpServer implements AutoCloseable {
         JsonObject result = new JsonObject();
         result.add("content", content);
         result.addProperty("isError", false);
+        return result;
+    }
+
+    private JsonObject imageToolResult(String base64Png, JsonObject metadata) {
+        JsonArray content = new JsonArray();
+        JsonObject contentItem = new JsonObject();
+        contentItem.addProperty("type", "image");
+        contentItem.addProperty("data", base64Png);
+        contentItem.addProperty("mimeType", "image/png");
+        content.add(contentItem);
+        JsonObject result = new JsonObject();
+        result.add("content", content);
+        result.addProperty("isError", false);
+        result.add("structuredContent", metadata);
         return result;
     }
 
