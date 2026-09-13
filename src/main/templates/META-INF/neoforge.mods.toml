@@ -36,3 +36,10 @@ type = "optional"
 versionRange = "[2101.7.1-build.181,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.25.0,)"
+ordering = "AFTER"
+side = "CLIENT"

@@ -34,4 +34,34 @@ public interface McpToolExecutor {
     JsonObject exportChapterCanvas(long chapterId, boolean savePng) throws Exception;
 
     JsonObject takeScreenshot() throws Exception;
+
+    JsonObject lookAt(double x, double y, double z, int durationTicks) throws Exception;
+
+    JsonObject jump() throws Exception;
+
+    JsonObject move(String direction, int durationTicks) throws Exception;
+
+    JsonObject interact(String target, String hand) throws Exception;
+
+    JsonObject getActionStatus(long actionId) throws Exception;
+
+    JsonObject cancelAction(long actionId) throws Exception;
+
+    JsonObject recipeCapabilities() throws Exception;
+
+    JsonObject findRecipes(String query, String recipeType, int limit) throws Exception;
+
+    JsonObject getRecipe(String recipeId) throws Exception;
+
+    JsonObject viewRecipe(String recipeId, String viewer, String mode) throws Exception;
+
+    JsonObject getRecipeTree(String itemId, int maxDepth) throws Exception;
+
+    JsonObject getItemUsages(String itemId) throws Exception;
+
+    JsonObject getWorkstationRecipes(String machineId) throws Exception;
+
+    JsonObject scanForLoops(String itemId, int maxDepth) throws Exception;
+
+    JsonObject captureRecipeCard(String recipeId) throws Exception;
 }

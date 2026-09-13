@@ -41,6 +41,30 @@ public final class NeoMcpConfig {
             .comment("Maximum seconds to wait for a client, server, or KubeJS action")
             .defineInRange("actionTimeoutSeconds", 5, 1, 120);
 
+    public static final ModConfigSpec.IntValue MAX_ACTION_TICKS = BUILDER
+            .comment("Maximum client ticks accepted by look_at and move")
+            .defineInRange("maxActionTicks", 200, 1, 1200);
+
+    public static final ModConfigSpec.IntValue MAX_RECIPE_RESULTS = BUILDER
+            .comment("Maximum recipes returned by find_recipes")
+            .defineInRange("maxRecipeResults", 1000, 1, 10000);
+
+    public static final ModConfigSpec.IntValue MAX_RECIPE_TREE_DEPTH = BUILDER
+            .comment("Maximum depth accepted by get_recipe_tree")
+            .defineInRange("maxRecipeTreeDepth", 5, 0, 32);
+
+    public static final ModConfigSpec.IntValue MAX_RECIPE_GRAPH_NODES = BUILDER
+            .comment("Maximum graph expansion work units used by recipe tree and loop tools")
+            .defineInRange("maxRecipeGraphNodes", 5000, 100, 100000);
+
+    public static final ModConfigSpec.IntValue RECIPE_CARD_WIDTH = BUILDER
+            .comment("Width in pixels of capture_recipe_card's off-screen framebuffer")
+            .defineInRange("recipeCardWidth", 320, 64, 2048);
+
+    public static final ModConfigSpec.IntValue RECIPE_CARD_HEIGHT = BUILDER
+            .comment("Height in pixels of capture_recipe_card's off-screen framebuffer")
+            .defineInRange("recipeCardHeight", 180, 64, 2048);
+
     public static final ModConfigSpec.DoubleValue MAX_NEARBY_ENTITY_RADIUS = BUILDER
             .comment("Maximum radius accepted by get_nearby_entities")
             .defineInRange("maxNearbyEntityRadius", 512.0D, 0.0D, 4096.0D);
@@ -104,6 +128,30 @@ public final class NeoMcpConfig {
 
     public static long actionTimeoutSeconds() {
         return ACTION_TIMEOUT_SECONDS.get();
+    }
+
+    public static int maxActionTicks() {
+        return MAX_ACTION_TICKS.get();
+    }
+
+    public static int maxRecipeResults() {
+        return MAX_RECIPE_RESULTS.get();
+    }
+
+    public static int maxRecipeTreeDepth() {
+        return MAX_RECIPE_TREE_DEPTH.get();
+    }
+
+    public static int maxRecipeGraphNodes() {
+        return MAX_RECIPE_GRAPH_NODES.get();
+    }
+
+    public static int recipeCardWidth() {
+        return RECIPE_CARD_WIDTH.get();
+    }
+
+    public static int recipeCardHeight() {
+        return RECIPE_CARD_HEIGHT.get();
     }
 
     public static double maxNearbyEntityRadius() {

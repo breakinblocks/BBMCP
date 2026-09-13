@@ -19,6 +19,7 @@ import java.net.URI;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -476,6 +477,33 @@ public final class McpHttpServer implements AutoCloseable {
         tools.add(exportChapterCanvasTool());
         tools.add(tool("take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
         tools.add(tool("update_take_screenshot", "Capture the main framebuffer, including any active Screen UI overlay."));
+        tools.add(lookAtTool());
+        tools.add(jumpTool());
+        tools.add(moveTool());
+        tools.add(interactTool());
+        tools.add(actionIdTool("get_action_status", "Return the current status of a client action."));
+        tools.add(actionIdTool("cancel_action", "Cancel a running client action."));
+        tools.add(tool("recipe_capabilities", "Report canonical recipe access and detected optional recipe viewers."));
+        tools.add(findRecipesTool());
+        tools.add(tool("get_recipe", "Return one exact recipe from the synchronized client recipe manager.",
+                "recipe_id", "string", true));
+        tools.add(viewRecipeTool());
+        tools.add(recipeItemDepthTool(
+                "get_recipe_tree",
+                "Return a bounded hierarchical crafting tree for an item, including amounts and workstations."));
+        tools.add(recipeItemTool(
+                "get_item_usages",
+                "Return recipes and JEI categories where an item is an ingredient or catalyst."));
+        tools.add(recipeItemTool(
+                "get_workstation_recipes",
+                "Return recipes associated with a workstation or machine item catalyst.",
+                "machine_id"));
+        tools.add(recipeItemDepthTool(
+                "scan_for_loops",
+                "Scan a bounded recipe graph for circular item dependencies."));
+        tools.add(recipeIdTool(
+                "capture_recipe_card",
+                "Render one JEI recipe card into an off-screen framebuffer and return a PNG image."));
         for (McpDynamicTool dynamicTool : dynamicToolRegistry.snapshot().values()) {
             JsonObject definition = new JsonObject();
             definition.addProperty("name", dynamicTool.name());
@@ -519,6 +547,21 @@ public final class McpHttpServer implements AutoCloseable {
             case "get_chapter_layout" -> getChapterLayout(arguments);
             case "export_chapter_canvas" -> exportChapterCanvas(arguments);
             case "take_screenshot", "update_take_screenshot" -> takeScreenshot(arguments);
+            case "look_at" -> lookAt(arguments);
+            case "jump" -> jump(arguments);
+            case "move" -> move(arguments);
+            case "interact" -> interact(arguments);
+            case "get_action_status" -> getActionStatus(arguments);
+            case "cancel_action" -> cancelAction(arguments);
+            case "recipe_capabilities" -> recipeCapabilities(arguments);
+            case "find_recipes" -> findRecipes(arguments);
+            case "get_recipe" -> getRecipe(arguments);
+            case "view_recipe" -> viewRecipe(arguments);
+            case "get_recipe_tree" -> getRecipeTree(arguments);
+            case "get_item_usages" -> getItemUsages(arguments);
+            case "get_workstation_recipes" -> getWorkstationRecipes(arguments);
+            case "scan_for_loops" -> scanForLoops(arguments);
+            case "capture_recipe_card" -> captureRecipeCard(arguments);
             default -> callDynamicTool(name, arguments);
         };
     }
@@ -603,9 +646,9 @@ public final class McpHttpServer implements AutoCloseable {
 
     private JsonObject getBlockEntityData(JsonObject arguments) throws Exception {
         requireOnlyArguments(arguments, "x", "y", "z");
-        int x = requiredInteger(arguments, "x");
-        int y = requiredInteger(arguments, "y");
-        int z = requiredInteger(arguments, "z");
+        int x = requiredInteger(arguments, "x", "get_block_entity_data");
+        int y = requiredInteger(arguments, "y", "get_block_entity_data");
+        int z = requiredInteger(arguments, "z", "get_block_entity_data");
         try {
             JsonObject blockEntityData = toolExecutor.getBlockEntityData(x, y, z);
             JsonObject result = textToolResult(blockEntityData.toString());
@@ -777,6 +820,210 @@ public final class McpHttpServer implements AutoCloseable {
         } catch (Exception exception) {
             return toolErrorResult("Screenshot capture failed: " + errorMessage(exception));
         }
+    }
+
+    private JsonObject lookAt(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "x", "y", "z", "duration_ticks");
+        double x = requiredNumber(arguments, "x", "look_at");
+        double y = requiredNumber(arguments, "y", "look_at");
+        double z = requiredNumber(arguments, "z", "look_at");
+        int durationTicks = optionalInteger(arguments, "duration_ticks", "look_at", 1);
+        requireActionTicks(durationTicks, "look_at");
+        try {
+            JsonObject action = toolExecutor.lookAt(x, y, z, durationTicks);
+            return structuredToolResult(action);
+        } catch (Exception exception) {
+            return toolErrorResult("Look action failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject jump(JsonObject arguments) throws Exception {
+        if (!arguments.isEmpty()) {
+            throw new InvalidParamsException("jump does not accept arguments");
+        }
+        try {
+            return structuredToolResult(toolExecutor.jump());
+        } catch (Exception exception) {
+            return toolErrorResult("Jump action failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject move(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "direction", "duration_ticks");
+        String direction = requiredString(arguments, "direction", "move");
+        int durationTicks = requiredInteger(arguments, "duration_ticks", "move");
+        requireActionTicks(durationTicks, "move");
+        if (!List.of("forward", "backward", "left", "right").contains(direction)) {
+            throw new InvalidParamsException("move direction must be 'forward', 'backward', 'left', or 'right'");
+        }
+        try {
+            return structuredToolResult(toolExecutor.move(direction, durationTicks));
+        } catch (Exception exception) {
+            return toolErrorResult("Movement action failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject interact(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "target", "hand");
+        String target = requiredString(arguments, "target", "interact");
+        String hand = optionalString(arguments, "hand", "interact", "main_hand");
+        if (!List.of("looked_at", "air").contains(target)) {
+            throw new InvalidParamsException("interact target must be 'looked_at' or 'air'");
+        }
+        if (!List.of("main_hand", "off_hand").contains(hand)) {
+            throw new InvalidParamsException("interact hand must be 'main_hand' or 'off_hand'");
+        }
+        try {
+            return structuredToolResult(toolExecutor.interact(target, hand));
+        } catch (Exception exception) {
+            return toolErrorResult("Interaction failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject getActionStatus(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "action_id");
+        long actionId = requiredLong(arguments, "action_id", "get_action_status");
+        try {
+            return structuredToolResult(toolExecutor.getActionStatus(actionId));
+        } catch (Exception exception) {
+            return toolErrorResult("Action status unavailable: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject cancelAction(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "action_id");
+        long actionId = requiredLong(arguments, "action_id", "cancel_action");
+        try {
+            return structuredToolResult(toolExecutor.cancelAction(actionId));
+        } catch (Exception exception) {
+            return toolErrorResult("Action cancellation failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject recipeCapabilities(JsonObject arguments) throws Exception {
+        if (!arguments.isEmpty()) {
+            throw new InvalidParamsException("recipe_capabilities does not accept arguments");
+        }
+        try {
+            return structuredToolResult(toolExecutor.recipeCapabilities());
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe capabilities unavailable: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject findRecipes(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "query", "recipe_type", "limit");
+        String query = optionalString(arguments, "query", "find_recipes", "");
+        String recipeType = optionalString(arguments, "recipe_type", "find_recipes", "");
+        int limit = optionalInteger(arguments, "limit", "find_recipes", NeoMcpConfig.maxRecipeResults());
+        if (limit < 1 || limit > NeoMcpConfig.maxRecipeResults()) {
+            throw new InvalidParamsException(
+                    "find_recipes limit must be between 1 and " + NeoMcpConfig.maxRecipeResults());
+        }
+        try {
+            return structuredToolResult(toolExecutor.findRecipes(query, recipeType, limit));
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe search failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject getRecipe(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "recipe_id");
+        String recipeId = requiredString(arguments, "recipe_id", "get_recipe");
+        try {
+            return structuredToolResult(toolExecutor.getRecipe(recipeId));
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe lookup failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject viewRecipe(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "recipe_id", "viewer", "mode");
+        String recipeId = requiredString(arguments, "recipe_id", "view_recipe");
+        String viewer = optionalString(arguments, "viewer", "view_recipe", "auto");
+        String mode = optionalString(arguments, "mode", "view_recipe", "recipe");
+        if (!List.of("auto", "jei", "emi", "rei").contains(viewer)) {
+            throw new InvalidParamsException("view_recipe viewer must be 'auto', 'jei', 'emi', or 'rei'");
+        }
+        if (!List.of("recipe", "uses").contains(mode)) {
+            throw new InvalidParamsException("view_recipe mode must be 'recipe' or 'uses'");
+        }
+        try {
+            return structuredToolResult(toolExecutor.viewRecipe(recipeId, viewer, mode));
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe viewer could not open the recipe: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject getRecipeTree(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "item_id", "max_depth");
+        String itemId = requiredString(arguments, "item_id", "get_recipe_tree");
+        int maxDepth = optionalInteger(arguments, "max_depth", "get_recipe_tree", 3);
+        requireRecipeDepth(maxDepth, "get_recipe_tree");
+        try {
+            return structuredToolResult(toolExecutor.getRecipeTree(itemId, maxDepth));
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe tree lookup failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject getItemUsages(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "item_id");
+        String itemId = requiredString(arguments, "item_id", "get_item_usages");
+        try {
+            return structuredToolResult(toolExecutor.getItemUsages(itemId));
+        } catch (Exception exception) {
+            return toolErrorResult("Item usage lookup failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject getWorkstationRecipes(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "machine_id");
+        String machineId = requiredString(arguments, "machine_id", "get_workstation_recipes");
+        try {
+            return structuredToolResult(toolExecutor.getWorkstationRecipes(machineId));
+        } catch (Exception exception) {
+            return toolErrorResult("Workstation recipe lookup failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject scanForLoops(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "item_id", "max_depth");
+        String itemId = requiredString(arguments, "item_id", "scan_for_loops");
+        int maxDepth = optionalInteger(arguments, "max_depth", "scan_for_loops", 5);
+        if (maxDepth < 1 || maxDepth > 5) {
+            throw new InvalidParamsException("scan_for_loops max_depth must be between 1 and 5");
+        }
+        try {
+            return structuredToolResult(toolExecutor.scanForLoops(itemId, maxDepth));
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe loop scan failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject captureRecipeCard(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "recipe_id");
+        String recipeId = requiredString(arguments, "recipe_id", "capture_recipe_card");
+        try {
+            JsonObject capture = toolExecutor.captureRecipeCard(recipeId);
+            JsonElement encodedImage = capture.get("png_base64");
+            if (encodedImage == null || !encodedImage.isJsonPrimitive()
+                    || !encodedImage.getAsJsonPrimitive().isString()
+                    || encodedImage.getAsString().isBlank()) {
+                throw new IllegalStateException("Recipe card capture did not return a PNG payload");
+            }
+            JsonObject metadata = capture.deepCopy();
+            metadata.remove("png_base64");
+            return imageToolResult(encodedImage.getAsString(), metadata);
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe card capture failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject structuredToolResult(JsonObject structuredContent) {
+        JsonObject result = textToolResult(structuredContent.toString());
+        result.add("structuredContent", structuredContent);
+        return result;
     }
 
     private JsonObject getChapterLayout(JsonObject arguments) throws Exception {
@@ -987,6 +1234,139 @@ public final class McpHttpServer implements AutoCloseable {
         return result;
     }
 
+    private JsonObject lookAtTool() {
+        JsonObject result = tool(
+                "look_at",
+                "Turn the local player toward a world position, optionally using linear interpolation over client ticks.");
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        properties.add("x", numberSchema());
+        properties.add("y", numberSchema());
+        properties.add("z", numberSchema());
+        properties.add("duration_ticks", integerSchema());
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("x");
+        required.add("y");
+        required.add("z");
+        schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject jumpTool() {
+        return tool("jump", "Perform one bounded local-player jump from the client thread.");
+    }
+
+    private JsonObject moveTool() {
+        JsonObject result = tool("move", "Hold one primitive movement key for a bounded number of client ticks.");
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        JsonObject direction = stringSchema();
+        JsonArray directions = new JsonArray();
+        directions.add("forward");
+        directions.add("backward");
+        directions.add("left");
+        directions.add("right");
+        direction.add("enum", directions);
+        properties.add("direction", direction);
+        properties.add("duration_ticks", integerSchema());
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("direction");
+        required.add("duration_ticks");
+        schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject interactTool() {
+        JsonObject result = tool(
+                "interact",
+                "Use the selected hand on the current crosshair target or use the item in the air.");
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        JsonObject target = stringSchema();
+        JsonArray targets = new JsonArray();
+        targets.add("looked_at");
+        targets.add("air");
+        target.add("enum", targets);
+        properties.add("target", target);
+        JsonObject hand = stringSchema();
+        JsonArray hands = new JsonArray();
+        hands.add("main_hand");
+        hands.add("off_hand");
+        hand.add("enum", hands);
+        properties.add("hand", hand);
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("target");
+        schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject actionIdTool(String name, String description) {
+        return tool(name, description, "action_id", "integer", true);
+    }
+
+    private JsonObject findRecipesTool() {
+        JsonObject result = tool(
+                "find_recipes",
+                "Search the synchronized client recipe manager by recipe ID, item ID, ingredient, or group.");
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        properties.add("query", stringSchema());
+        properties.add("recipe_type", stringSchema());
+        properties.add("limit", integerSchema());
+        schema.add("properties", properties);
+        return result;
+    }
+
+    private JsonObject viewRecipeTool() {
+        JsonObject result = tool(
+                "view_recipe",
+                "Open a recipe or item-usage view in an installed optional recipe viewer.");
+        JsonObject schema = result.getAsJsonObject("inputSchema");
+        JsonObject properties = new JsonObject();
+        properties.add("recipe_id", stringSchema());
+        JsonObject viewer = stringSchema();
+        JsonArray viewers = new JsonArray();
+        viewers.add("auto");
+        viewers.add("jei");
+        viewers.add("emi");
+        viewers.add("rei");
+        viewer.add("enum", viewers);
+        properties.add("viewer", viewer);
+        JsonObject mode = stringSchema();
+        JsonArray modes = new JsonArray();
+        modes.add("recipe");
+        modes.add("uses");
+        mode.add("enum", modes);
+        properties.add("mode", mode);
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("recipe_id");
+        schema.add("required", required);
+        return result;
+    }
+
+    private JsonObject recipeItemTool(String name, String description) {
+        return recipeItemTool(name, description, "item_id");
+    }
+
+    private JsonObject recipeItemTool(String name, String description, String propertyName) {
+        return tool(name, description, propertyName, "string", true);
+    }
+
+    private JsonObject recipeItemDepthTool(String name, String description) {
+        JsonObject result = recipeItemTool(name, description);
+        JsonObject properties = result.getAsJsonObject("inputSchema").getAsJsonObject("properties");
+        properties.add("max_depth", integerSchema());
+        return result;
+    }
+
+    private JsonObject recipeIdTool(String name, String description) {
+        return tool(name, description, "recipe_id", "string", true);
+    }
+
     private JsonObject ftbQuestIdSchema() {
         JsonObject schema = stringSchema();
         schema.addProperty("pattern", "^[0-9A-Fa-f]{16}$");
@@ -999,6 +1379,13 @@ public final class McpHttpServer implements AutoCloseable {
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "integer");
         return schema;
+    }
+
+    private void requireRecipeDepth(int depth, String toolName) throws InvalidParamsException {
+        if (depth < 0 || depth > NeoMcpConfig.maxRecipeTreeDepth()) {
+            throw new InvalidParamsException(
+                    toolName + " max_depth must be between 0 and " + NeoMcpConfig.maxRecipeTreeDepth());
+        }
     }
 
     private void requireOnlyArguments(JsonObject arguments, String... allowedNames) throws InvalidParamsException {
@@ -1017,14 +1404,36 @@ public final class McpHttpServer implements AutoCloseable {
     }
 
     private int requiredInteger(JsonObject arguments, String name) throws InvalidParamsException {
+        return requiredInteger(arguments, name, "request");
+    }
+
+    private int requiredInteger(JsonObject arguments, String name, String toolName)
+            throws InvalidParamsException {
         JsonElement value = arguments.get(name);
         if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
-            throw new InvalidParamsException("get_block_entity_data requires an integer " + name);
+            throw new InvalidParamsException(toolName + " requires an integer " + name);
         }
         try {
             return new BigDecimal(value.getAsString()).toBigIntegerExact().intValueExact();
         } catch (ArithmeticException | NumberFormatException exception) {
-            throw new InvalidParamsException("get_block_entity_data requires an integer " + name);
+            throw new InvalidParamsException(toolName + " requires an integer " + name);
+        }
+    }
+
+    private int optionalInteger(JsonObject arguments, String name, String toolName, int defaultValue)
+            throws InvalidParamsException {
+        return arguments.has(name) ? requiredInteger(arguments, name, toolName) : defaultValue;
+    }
+
+    private long requiredLong(JsonObject arguments, String name, String toolName) throws InvalidParamsException {
+        JsonElement value = arguments.get(name);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw new InvalidParamsException(toolName + " requires an integer " + name);
+        }
+        try {
+            return new BigDecimal(value.getAsString()).toBigIntegerExact().longValueExact();
+        } catch (ArithmeticException | NumberFormatException exception) {
+            throw new InvalidParamsException(toolName + " requires an integer " + name);
         }
     }
 
@@ -1035,6 +1444,18 @@ public final class McpHttpServer implements AutoCloseable {
             throw new InvalidParamsException(toolName + " requires a non-blank string " + name);
         }
         return value.getAsString();
+    }
+
+    private String optionalString(JsonObject arguments, String name, String toolName, String defaultValue)
+            throws InvalidParamsException {
+        return arguments.has(name) ? requiredString(arguments, name, toolName) : defaultValue;
+    }
+
+    private void requireActionTicks(int ticks, String toolName) throws InvalidParamsException {
+        if (ticks < 1 || ticks > NeoMcpConfig.maxActionTicks()) {
+            throw new InvalidParamsException(
+                    toolName + " duration_ticks must be between 1 and " + NeoMcpConfig.maxActionTicks());
+        }
     }
 
     private long requiredFtbQuestId(JsonObject arguments, String name, String toolName)

@@ -1,18 +1,30 @@
 package com.breakinblocks.neomcp;
 
+import com.breakinblocks.neomcp.actions.ActionResult;
+import com.breakinblocks.neomcp.actions.ActionStatus;
+import com.breakinblocks.neomcp.actions.ClientActionController;
 import com.breakinblocks.neomcp.mcp.McpHttpServer;
 import com.breakinblocks.neomcp.mcp.McpNbtJson;
 import com.breakinblocks.neomcp.mcp.McpToolExecutor;
 import com.breakinblocks.neomcp.config.NeoMcpConfig;
 import com.breakinblocks.neomcp.ftbquests.FtbQuestsIntegration;
 import com.breakinblocks.neomcp.kubejs.NeoMcpClientBridge;
+import com.breakinblocks.neomcp.recipe.ClientRecipeCatalog;
+import com.breakinblocks.neomcp.recipe.ClientRecipeViewerSupport;
+import com.breakinblocks.neomcp.recipe.IRecipeViewerAdapter;
+import com.breakinblocks.neomcp.recipe.RecipeCatalog;
+import com.breakinblocks.neomcp.recipe.RecipeViewerAdapterRegistry;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexSorting;
 import com.mojang.serialization.JsonOps;
+import com.mojang.blaze3d.pipeline.TextureTarget;
+import com.mojang.blaze3d.platform.Lighting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -33,6 +45,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -47,12 +60,17 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforgespi.language.IModInfo;
+import net.neoforged.neoforge.client.ClientHooks;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 
 import java.io.BufferedReader;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Base64;
+import java.util.Locale;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -66,6 +84,7 @@ import java.util.UUID;
 @EventBusSubscriber(modid = NeoMcp.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class NeoMcpClient {
     private static McpHttpServer server;
+    private static MinecraftToolExecutor toolExecutor;
     private static volatile ClientCapture clientCapture;
 
     private NeoMcpClient() {
@@ -94,12 +113,15 @@ public final class NeoMcpClient {
             throw new IllegalStateException("NeoMCP HTTP server is already running");
         }
         NeoMcpClientBridge.install(NeoMcpClient::captureKubejsClientContext);
-        McpHttpServer newServer = new McpHttpServer(new MinecraftToolExecutor());
+        MinecraftToolExecutor newToolExecutor = new MinecraftToolExecutor();
+        McpHttpServer newServer = new McpHttpServer(newToolExecutor);
         try {
             newServer.start();
             server = newServer;
+            toolExecutor = newToolExecutor;
         } catch (java.io.IOException | RuntimeException exception) {
             newServer.close();
+            newToolExecutor.close();
             NeoMcpClientBridge.clear();
             throw new IllegalStateException(
                     "Unable to start NeoMCP HTTP server on localhost:" + NeoMcpConfig.port(),
@@ -112,6 +134,10 @@ public final class NeoMcpClient {
             if (server != null) {
                 server.close();
                 server = null;
+            }
+            if (toolExecutor != null) {
+                toolExecutor.close();
+                toolExecutor = null;
             }
         } finally {
             NeoMcpClientBridge.clear();
@@ -141,8 +167,18 @@ public final class NeoMcpClient {
         return new NeoMcpClientBridge.ClientValues(serverPlayer, capture.minecraft());
     }
 
-    private static final class MinecraftToolExecutor implements McpToolExecutor {
+    private static final class MinecraftToolExecutor implements McpToolExecutor, AutoCloseable {
         private static final String KUBEJS_SCRIPT_FILE = "neomcp_injected.js";
+        private final ClientActionController actionController;
+
+        private MinecraftToolExecutor() {
+            this.actionController = new ClientActionController(Minecraft.getInstance());
+        }
+
+        @Override
+        public void close() {
+            actionController.close();
+        }
 
         @Override
         public void executeCommand(String command) throws Exception {
@@ -598,6 +634,301 @@ public final class NeoMcpClient {
                 result.addProperty("height", renderTarget.height);
                 return result;
             });
+        }
+
+        @Override
+        public JsonObject lookAt(double x, double y, double z, int durationTicks) throws Exception {
+            return callOnClientThread(() -> actionResult(
+                    actionController.lookAt(x, y, z, durationTicks)));
+        }
+
+        @Override
+        public JsonObject jump() throws Exception {
+            return callOnClientThread(() -> actionResult(actionController.jump()));
+        }
+
+        @Override
+        public JsonObject move(String direction, int durationTicks) throws Exception {
+            return callOnClientThread(() -> actionResult(actionController.move(
+                    ClientActionController.Movement.valueOf(direction.toUpperCase(Locale.ROOT)), durationTicks)));
+        }
+
+        @Override
+        public JsonObject interact(String target, String hand) throws Exception {
+            return callOnClientThread(() -> {
+                InteractionHand interactionHand = parseInteractionHand(hand);
+                ActionResult action = switch (target) {
+                    case "looked_at" -> actionController.interactCrosshair(interactionHand);
+                    case "air" -> actionController.interactAir(interactionHand);
+                    default -> throw new IllegalArgumentException("Unknown interaction target: " + target);
+                };
+                return actionResult(action);
+            });
+        }
+
+        @Override
+        public JsonObject getActionStatus(long actionId) throws Exception {
+            return callOnClientThread(() -> actionStatus(actionController.status(actionId)));
+        }
+
+        @Override
+        public JsonObject cancelAction(long actionId) throws Exception {
+            return callOnClientThread(() -> actionResult(actionController.cancel(actionId)));
+        }
+
+        @Override
+        public JsonObject recipeCapabilities() throws Exception {
+            return callOnClientThread(() -> {
+                List<String> viewers = ClientRecipeViewerSupport.detectedViewers();
+                JsonArray viewerIds = new JsonArray();
+                viewers.forEach(viewerIds::add);
+                JsonObject result = new JsonObject();
+                result.addProperty("canonical_recipe_manager", true);
+                result.addProperty("recipe_manager_source", "client_synchronized_recipe_manager");
+                result.add("detected_viewers", viewerIds);
+                result.addProperty("jei_adapter_available", ClientRecipeViewerSupport.jeiRuntimeAvailable());
+                result.addProperty("emi_adapter_available", false);
+                result.addProperty("rei_adapter_available", false);
+                result.addProperty("recipe_card_capture", ClientRecipeViewerSupport.jeiRuntimeAvailable());
+                return result;
+            });
+        }
+
+        @Override
+        public JsonObject findRecipes(String query, String recipeType, int limit) throws Exception {
+            return callOnClientThread(() -> {
+                RecipeCatalog catalog = ClientRecipeCatalog.create();
+                List<RecipeCatalog.RecipeView> candidates = query.isBlank()
+                        ? catalog.list()
+                        : catalog.search(query);
+                JsonArray recipes = new JsonArray();
+                for (RecipeCatalog.RecipeView recipe : candidates) {
+                    if (!recipeType.isBlank() && !recipeType.equals(recipe.type())) {
+                        continue;
+                    }
+                    recipes.add(recipe.toJson());
+                    if (recipes.size() >= limit) {
+                        break;
+                    }
+                }
+                JsonObject result = new JsonObject();
+                result.addProperty("query", query);
+                result.addProperty("recipe_type", recipeType);
+                result.addProperty("count", recipes.size());
+                result.addProperty("truncated", recipes.size() >= limit && candidates.size() > recipes.size());
+                result.add("recipes", recipes);
+                return result;
+            });
+        }
+
+        @Override
+        public JsonObject getRecipe(String recipeId) throws Exception {
+            return callOnClientThread(() -> {
+                ResourceLocation id = parseResourceLocation(recipeId, "recipe");
+                RecipeCatalog.RecipeView recipe = ClientRecipeCatalog.create().get(id);
+                JsonObject result = new JsonObject();
+                result.addProperty("recipe_id", id.toString());
+                result.add("recipe", recipe.toJson());
+                return result;
+            });
+        }
+
+        @Override
+        public JsonObject viewRecipe(String recipeId, String viewer, String mode) throws Exception {
+            return callOnClientThread(() -> {
+                ResourceLocation id = parseResourceLocation(recipeId, "recipe");
+                RecipeCatalog catalog = ClientRecipeCatalog.create();
+                catalog.get(id);
+                List<String> detected = ClientRecipeViewerSupport.detectedViewers();
+                String selectedViewer = "auto".equals(viewer)
+                        ? detected.stream().findFirst().orElseThrow(
+                                () -> new IllegalStateException("No supported recipe viewer is loaded"))
+                        : viewer;
+                if (!"jei".equals(selectedViewer)) {
+                    throw new UnsupportedOperationException(
+                            "Recipe viewer adapter is not implemented for: " + selectedViewer);
+                }
+                if (!detected.contains(selectedViewer)) {
+                    throw new IllegalStateException("Requested recipe viewer is not loaded: " + selectedViewer);
+                }
+                IRecipeViewerAdapter adapter = RecipeViewerAdapterRegistry.create(catalog);
+                adapter.openRecipe(id, mode);
+                JsonObject result = new JsonObject();
+                result.addProperty("recipe_id", id.toString());
+                result.addProperty("viewer", adapter.id());
+                result.addProperty("mode", mode);
+                result.addProperty("opened", true);
+                return result;
+            });
+        }
+
+        @Override
+        public JsonObject getRecipeTree(String itemId, int maxDepth) throws Exception {
+            return callOnClientThread(() -> {
+                ResourceLocation id = parseResourceLocation(itemId, "item");
+                IRecipeViewerAdapter adapter = recipeAdapter();
+                return adapter.getRecipeTree(id, maxDepth);
+            });
+        }
+
+        @Override
+        public JsonObject getItemUsages(String itemId) throws Exception {
+            return callOnClientThread(() -> {
+                ResourceLocation id = parseResourceLocation(itemId, "item");
+                return recipeAdapter().getItemUsages(id);
+            });
+        }
+
+        @Override
+        public JsonObject getWorkstationRecipes(String machineId) throws Exception {
+            return callOnClientThread(() -> {
+                ResourceLocation id = parseResourceLocation(machineId, "workstation item");
+                return recipeAdapter().getWorkstationRecipes(id);
+            });
+        }
+
+        @Override
+        public JsonObject scanForLoops(String itemId, int maxDepth) throws Exception {
+            return callOnClientThread(() -> {
+                ResourceLocation id = parseResourceLocation(itemId, "item");
+                return recipeAdapter().scanForLoops(id, maxDepth);
+            });
+        }
+
+        @Override
+        public JsonObject captureRecipeCard(String recipeId) throws Exception {
+            return callOnClientThread(() -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                if (!RenderSystem.isOnRenderThread()) {
+                    throw new IllegalStateException("Recipe card capture is not running on the render thread");
+                }
+                ResourceLocation id = parseResourceLocation(recipeId, "recipe");
+                RecipeCatalog catalog = ClientRecipeCatalog.create();
+                IRecipeViewerAdapter adapter = RecipeViewerAdapterRegistry.create(catalog);
+                if (!"jei".equals(adapter.id())) {
+                    throw new IllegalStateException("JEI is required for recipe card capture");
+                }
+                adapter.openRecipe(id, "recipe");
+                int width = NeoMcpConfig.recipeCardWidth();
+                int height = NeoMcpConfig.recipeCardHeight();
+                int previousFramebuffer = GlStateManager.getBoundFramebuffer();
+                TextureTarget target = new TextureTarget(width, height, true, true);
+                Path temporaryPng = null;
+                NativeImage image = null;
+                boolean projectionBackedUp = false;
+                boolean modelViewPushed = false;
+                boolean targetBound = false;
+                Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
+                try {
+                    target.setClearColor(0.08F, 0.08F, 0.08F, 1.0F);
+                    target.bindWrite(true);
+                    targetBound = true;
+                    target.clear(true);
+                    RenderSystem.viewport(0, 0, width, height);
+                    RenderSystem.backupProjectionMatrix();
+                    projectionBackedUp = true;
+                    modelViewStack.pushMatrix();
+                    modelViewPushed = true;
+                    RenderSystem.setProjectionMatrix(
+                            new Matrix4f().setOrtho(
+                                    0.0F,
+                                    width,
+                                    height,
+                                    0.0F,
+                                    1000.0F,
+                                    ClientHooks.getGuiFarPlane()),
+                            VertexSorting.ORTHOGRAPHIC_Z);
+                    modelViewStack.translation(
+                            0.0F,
+                            0.0F,
+                            10_000.0F - ClientHooks.getGuiFarPlane());
+                    RenderSystem.applyModelViewMatrix();
+                    Lighting.setupFor3DItems();
+                    net.minecraft.client.gui.GuiGraphics graphics = new net.minecraft.client.gui.GuiGraphics(
+                            minecraft, minecraft.renderBuffers().bufferSource());
+                    graphics.fill(0, 0, width, height, 0xFF151515);
+                    graphics.flush();
+                    adapter.renderRecipeCard(id, graphics, width, height);
+                    graphics.flush();
+                    minecraft.renderBuffers().bufferSource().endBatch();
+                    image = Screenshot.takeScreenshot(target);
+                    temporaryPng = Files.createTempFile(
+                            minecraft.gameDirectory.toPath().toAbsolutePath().normalize(),
+                            "neomcp-recipe-card-", ".png");
+                    image.writeToFile(temporaryPng);
+                    byte[] png = Files.readAllBytes(temporaryPng);
+                    JsonObject result = new JsonObject();
+                    result.addProperty("recipe_id", id.toString());
+                    result.addProperty("viewer", adapter.id());
+                    result.addProperty("width", width);
+                    result.addProperty("height", height);
+                    result.addProperty("mime_type", "image/png");
+                    result.addProperty("png_base64", Base64.getEncoder().encodeToString(png));
+                    return result;
+                } finally {
+                    if (image != null) {
+                        image.close();
+                    }
+                    try {
+                        if (modelViewPushed) {
+                            modelViewStack.popMatrix();
+                            RenderSystem.applyModelViewMatrix();
+                        }
+                    } finally {
+                        if (projectionBackedUp) {
+                            RenderSystem.restoreProjectionMatrix();
+                        }
+                    }
+                    try {
+                        if (targetBound) {
+                            target.unbindWrite();
+                        }
+                    } finally {
+                        try {
+                            target.destroyBuffers();
+                        } finally {
+                            GlStateManager._glBindFramebuffer(36160, previousFramebuffer);
+                            RenderSystem.viewport(
+                                    0,
+                                    0,
+                                    minecraft.getWindow().getWidth(),
+                                    minecraft.getWindow().getHeight());
+                        }
+                    }
+                    if (temporaryPng != null) {
+                        Files.deleteIfExists(temporaryPng);
+                    }
+                }
+            });
+        }
+
+        private IRecipeViewerAdapter recipeAdapter() {
+            return RecipeViewerAdapterRegistry.create(ClientRecipeCatalog.create());
+        }
+
+        private InteractionHand parseInteractionHand(String value) {
+            return switch (value) {
+                case "main_hand" -> InteractionHand.MAIN_HAND;
+                case "off_hand" -> InteractionHand.OFF_HAND;
+                default -> throw new IllegalArgumentException("Unknown interaction hand: " + value);
+            };
+        }
+
+        private JsonObject actionResult(ActionResult action) {
+            JsonObject result = new JsonObject();
+            result.addProperty("action_id", action.id());
+            result.addProperty("state", action.state().name().toLowerCase(Locale.ROOT));
+            result.addProperty("message", action.message());
+            return result;
+        }
+
+        private JsonObject actionStatus(ActionStatus status) {
+            JsonObject result = new JsonObject();
+            result.addProperty("action_id", status.id());
+            result.addProperty("state", status.state().name().toLowerCase(Locale.ROOT));
+            result.addProperty("elapsed_ticks", status.elapsedTicks());
+            result.addProperty("message", status.message());
+            return result;
         }
 
         private String blockEntityTypeId(BlockEntityType<?> type) {

@@ -29,7 +29,22 @@ public final class McpDynamicToolRegistry {
             "get_chapter_layout",
             "export_chapter_canvas",
             "take_screenshot",
-            "update_take_screenshot");
+            "update_take_screenshot",
+            "look_at",
+            "jump",
+            "move",
+            "interact",
+            "get_action_status",
+            "cancel_action",
+            "recipe_capabilities",
+            "find_recipes",
+            "get_recipe",
+            "view_recipe",
+            "get_recipe_tree",
+            "get_item_usages",
+            "get_workstation_recipes",
+            "scan_for_loops",
+            "capture_recipe_card");
 
     private final AtomicReference<Map<String, McpDynamicTool>> published =
             new AtomicReference<>(Map.of());
