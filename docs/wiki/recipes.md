@@ -34,7 +34,7 @@ dedicated-server process.
 | `get_recipe_tree` | `{ "item_id": string, "max_depth": int? }` | Reverse output graph. Each node includes recipe inputs, result amounts, ingredient choices, slot amounts, and workstation metadata when JEI is active. |
 | `get_item_usages` | `{ "item_id": string }` | Recipes in which the item is an ingredient or catalyst, plus viewer categories when available. |
 | `get_workstation_recipes` | `{ "machine_id": string }` | Recipes in categories for which JEI recognizes the item as a catalyst. |
-| `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Potential circular item/recipe chains. The request is capped at depth 5. |
+| `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Potential circular item/recipe chains. The request is capped by `maxRecipeLoopDepth`. |
 
 The graph is deliberately bounded. `get_recipe_tree` expands every item
 choice returned by a vanilla `Ingredient`; `amount` is the number of that
@@ -46,6 +46,36 @@ pretend that an unrecognized ingredient is an item.
 `scan_for_loops` reports graph cycles, not proof of an exploit. A loop may be
 intentional or may require energy, fluids, catalysts, or other conditions that
 the generic recipe graph cannot evaluate.
+
+## Recipe configuration
+
+The limits are client-side settings in `config/neomcp-client.toml`. The current
+values are also returned under `recipe_capabilities.limits` so an agent can adapt without
+guessing. `maxRecipeTreeDepth` and `maxRecipeLoopDepth` independently constrain
+the optional `max_depth` arguments. `maxRecipeGraphNodes` bounds traversal work
+for both graph tools. `maxRecipeInlineBytes` bounds advanced dump responses;
+saved JSON files remain complete. Truncated graph responses include `truncated` and the
+configured graph limit. Viewer integrations report their own availability and
+may reject a lookup when the active viewer cannot represent a recipe type or
+catalyst.
+
+`recipeCardWidth` and `recipeCardHeight` control the off-screen framebuffer used
+by `capture_recipe_card`; they do not change the game's window size.
+
+## Advanced progression analysis
+
+`dump_recipes` filters the synchronized catalog by recipe-ID namespace and
+recipe type. `analyze_recipe_complexity` reports distinct namespaces encountered
+through the bounded producing/ingredient graph and the longest sequential chain.
+`check_recipe_cycles` reports cycles reachable from one item root. All graph work
+is bounded by `maxRecipeGraphNodes`.
+
+`find_underutilized_items` defines underutilized as a producible item with zero
+canonical ingredient consumers. This is a bridge-candidate heuristic, not a
+measure of player demand: quest rewards, machine catalysts, fluids, custom
+ingredients, and non-recipe consumption are outside the vanilla recipe fields.
+All four tools accept `save_json: true` and return a generated `file_path` under
+the instance's `dumps/` directory.
 
 ## JEI 19.x adapter
 
@@ -82,7 +112,7 @@ instance when using `view_recipe`, workstation lookups, or card capture.
 ## Opening and capturing a recipe card
 
 `view_recipe` opens a synchronized recipe in JEI, while
-`capture_recipe_card` renders the same recipe into a temporary off-screen
+`capture_recipe_card` renders the same recipe into an off-screen
 `TextureTarget`. It creates `GuiGraphics`, asks JEI for an
 `IRecipeLayoutDrawable`, draws the recipe and overlays into the target, reads
 the target with `Screenshot.takeScreenshot`, and returns standard MCP image
@@ -90,13 +120,21 @@ content (`mimeType: image/png`). The main window framebuffer is not used for
 the card image, and the surrounding JEI sidebar/search/inventory UI is not
 part of the result.
 
+By default the intermediate PNG is deleted after encoding. Pass
+`"save_png": true` to additionally save the generated image as
+`screenshots/neomcp_recipe_<uuid>.png`; the response then includes
+`saved_to_screenshots: true` and `screenshot_path`. NeoMCP generates the
+filename and confines the destination to the active instance's
+`screenshots/` directory, so reports can link the returned path.
+
 Example:
 
 ```json
 {
   "name": "capture_recipe_card",
   "arguments": {
-    "recipe_id": "minecraft:iron_ingot_from_smelting"
+    "recipe_id": "minecraft:iron_ingot_from_smelting",
+    "save_png": true
   }
 }
 ```

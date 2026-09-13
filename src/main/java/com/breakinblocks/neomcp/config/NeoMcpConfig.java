@@ -49,9 +49,17 @@ public final class NeoMcpConfig {
             .comment("Maximum recipes returned by find_recipes")
             .defineInRange("maxRecipeResults", 1000, 1, 10000);
 
+    public static final ModConfigSpec.IntValue MAX_RECIPE_INLINE_BYTES = BUILDER
+            .comment("Maximum UTF-8 bytes returned inline by advanced recipe dumps")
+            .defineInRange("maxRecipeInlineBytes", 2_000_000, 64_000, 16_000_000);
+
     public static final ModConfigSpec.IntValue MAX_RECIPE_TREE_DEPTH = BUILDER
             .comment("Maximum depth accepted by get_recipe_tree")
             .defineInRange("maxRecipeTreeDepth", 5, 0, 32);
+
+    public static final ModConfigSpec.IntValue MAX_RECIPE_LOOP_DEPTH = BUILDER
+            .comment("Maximum depth accepted by scan_for_loops")
+            .defineInRange("maxRecipeLoopDepth", 5, 1, 32);
 
     public static final ModConfigSpec.IntValue MAX_RECIPE_GRAPH_NODES = BUILDER
             .comment("Maximum graph expansion work units used by recipe tree and loop tools")
@@ -138,8 +146,16 @@ public final class NeoMcpConfig {
         return MAX_RECIPE_RESULTS.get();
     }
 
+    public static int maxRecipeInlineBytes() {
+        return MAX_RECIPE_INLINE_BYTES.get();
+    }
+
     public static int maxRecipeTreeDepth() {
         return MAX_RECIPE_TREE_DEPTH.get();
+    }
+
+    public static int maxRecipeLoopDepth() {
+        return MAX_RECIPE_LOOP_DEPTH.get();
     }
 
     public static int maxRecipeGraphNodes() {

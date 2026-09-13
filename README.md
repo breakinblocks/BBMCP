@@ -265,8 +265,12 @@ Baritone support. See [Movement and compatibility](docs/wiki/movement-and-compat
 | `get_recipe_tree` | `{ "item_id": string, "max_depth": int? }` | Returns a bounded reverse crafting tree with ingredient slots, result amounts, and workstation metadata. |
 | `get_item_usages` | `{ "item_id": string }` | Returns recipes/categories where the item is an ingredient or catalyst. |
 | `get_workstation_recipes` | `{ "machine_id": string }` | Returns JEI recipes associated with a machine/workstation catalyst. |
-| `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Finds potential circular recipe dependencies, capped at depth 5. |
-| `capture_recipe_card` | `{ "recipe_id": string }` | Returns one JEI recipe card as an off-screen `image/png` MCP content block. |
+| `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Finds potential circular recipe dependencies, capped by `maxRecipeLoopDepth`. |
+| `capture_recipe_card` | `{ "recipe_id": string, "save_png": boolean? }` | Returns one JEI recipe card as an off-screen `image/png` MCP content block; optionally saves a generated PNG under `screenshots/`. |
+| `dump_recipes` | `{ "mod_namespace": string?, "recipe_type": string?, "save_json": boolean? }` | Dumps synchronized recipes, optionally filtered and saved under `dumps/recipes/`. |
+| `analyze_recipe_complexity` | `{ "item_id": string, "save_json": boolean? }` | Calculates bounded namespace diversity and sequential processing depth. |
+| `check_recipe_cycles` | `{ "item_id": string, "save_json": boolean? }` | Detects bounded recipe cycles reachable from an item. |
+| `find_underutilized_items` | `{ "mod_namespace": string, "save_json": boolean? }` | Finds producible items in a namespace with zero canonical recipe consumers. |
 
 The canonical recipe tools work without a viewer. JEI 19.x is the first
 viewer adapter and is compile-only in this project; install JEI in the

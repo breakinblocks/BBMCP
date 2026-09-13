@@ -44,7 +44,11 @@ public final class McpDynamicToolRegistry {
             "get_item_usages",
             "get_workstation_recipes",
             "scan_for_loops",
-            "capture_recipe_card");
+            "capture_recipe_card",
+            "dump_recipes",
+            "analyze_recipe_complexity",
+            "check_recipe_cycles",
+            "find_underutilized_items");
 
     private final AtomicReference<Map<String, McpDynamicTool>> published =
             new AtomicReference<>(Map.of());

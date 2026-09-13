@@ -109,6 +109,12 @@ function Test-Tool {
             is_error = $isError
             content = Get-ContentSummary -Result $result
         }
+        if ($Name -eq 'capture_recipe_card' -and $Arguments.save_png -eq $true -and $null -eq $result.structuredContent) {
+            throw 'capture_recipe_card save_png=true response is missing structuredContent'
+        }
+        if (@('dump_recipes', 'analyze_recipe_complexity', 'check_recipe_cycles', 'find_underutilized_items') -contains $Name -and $Arguments.save_json -eq $true -and $null -eq $result.structuredContent) {
+            throw "$Name save_json=true response is missing structuredContent"
+        }
         if ($null -ne $result.structuredContent) {
             $structured = $result.structuredContent
             if ($null -ne $structured.count) { $details.count = $structured.count }
@@ -116,6 +122,31 @@ function Test-Tool {
             if ($null -ne $structured.width) { $details.width = $structured.width }
             if ($null -ne $structured.height) { $details.height = $structured.height }
             if ($null -ne $structured.viewer) { $details.viewer = $structured.viewer }
+            if ($null -ne $structured.saved_to_screenshots) { $details.saved_to_screenshots = $structured.saved_to_screenshots }
+            if ($null -ne $structured.screenshot_path) { $details.screenshot_path = $structured.screenshot_path }
+            if ($Name -eq 'capture_recipe_card' -and $Arguments.save_png -eq $true) {
+                if ($structured.saved_to_screenshots -ne $true) { throw 'capture_recipe_card did not confirm saved_to_screenshots=true' }
+                if ([string]::IsNullOrWhiteSpace([string]$structured.screenshot_path)) {
+                    throw 'capture_recipe_card did not return screenshot_path'
+                }
+                $savedFile = Get-Item -LiteralPath ([string]$structured.screenshot_path) -ErrorAction Stop
+                if ($savedFile.PSIsContainer) { throw 'capture_recipe_card returned a directory instead of a screenshot file' }
+                if ($savedFile.Length -le 0) { throw 'capture_recipe_card returned an empty screenshot file' }
+            }
+            if (@('dump_recipes', 'analyze_recipe_complexity', 'check_recipe_cycles', 'find_underutilized_items') -contains $Name -and $Arguments.save_json -eq $true) {
+                if ($structured.saved_to_file -ne $true) { throw "$Name did not confirm saved_to_file=true" }
+                if ([string]::IsNullOrWhiteSpace([string]$structured.file_path)) { throw "$Name did not return file_path" }
+                $savedFile = Get-Item -LiteralPath ([string]$structured.file_path) -ErrorAction Stop
+                if ($savedFile.PSIsContainer -or $savedFile.Length -le 0) { throw "$Name returned an invalid JSON dump file" }
+                $savedJson = Get-Content -LiteralPath $savedFile.FullName -Raw -ErrorAction Stop | ConvertFrom-Json
+                $expectedField = switch ($Name) {
+                    'dump_recipes' { 'recipes' }
+                    'analyze_recipe_complexity' { 'item_id' }
+                    'check_recipe_cycles' { 'cycles' }
+                    'find_underutilized_items' { 'items' }
+                }
+                if ($null -eq $savedJson.$expectedField) { throw "$Name dump is missing $expectedField" }
+            }
             if ($null -ne $structured.opened) { $details.opened = $structured.opened }
             if ($null -ne $structured.reload_dispatched) { $details.reload_dispatched = $structured.reload_dispatched }
         }
@@ -144,7 +175,8 @@ $expectedTools = @(
     'get_action_status', 'cancel_action', 'recipe_capabilities',
     'find_recipes', 'get_recipe', 'view_recipe', 'get_recipe_tree',
     'get_item_usages', 'get_workstation_recipes', 'scan_for_loops',
-    'capture_recipe_card'
+    'capture_recipe_card', 'dump_recipes', 'analyze_recipe_complexity',
+    'check_recipe_cycles', 'find_underutilized_items'
 )
 if ($null -ne $initialToolsResponse -and $null -ne $initialToolsResponse.result) {
     $advertisedTools = @($initialToolsResponse.result.tools | ForEach-Object { [string]$_.name })
@@ -234,7 +266,11 @@ Test-Tool -Name 'get_recipe_tree' -Arguments @{ item_id = 'minecraft:iron_ingot'
 Test-Tool -Name 'get_item_usages' -Arguments @{ item_id = 'minecraft:iron_ingot' } | Out-Null
 Test-Tool -Name 'get_workstation_recipes' -Arguments @{ machine_id = 'minecraft:crafting_table' } | Out-Null
 Test-Tool -Name 'scan_for_loops' -Arguments @{ item_id = 'minecraft:iron_ingot'; max_depth = 5 } | Out-Null
-Test-Tool -Name 'capture_recipe_card' -Arguments @{ recipe_id = $RecipeId } | Out-Null
+Test-Tool -Name 'capture_recipe_card' -Arguments @{ recipe_id = $RecipeId; save_png = $true } | Out-Null
+Test-Tool -Name 'dump_recipes' -Arguments @{ mod_namespace = 'minecraft'; recipe_type = ''; save_json = $true } | Out-Null
+Test-Tool -Name 'analyze_recipe_complexity' -Arguments @{ item_id = 'minecraft:iron_ingot'; save_json = $true } | Out-Null
+Test-Tool -Name 'check_recipe_cycles' -Arguments @{ item_id = 'minecraft:iron_ingot'; save_json = $true } | Out-Null
+Test-Tool -Name 'find_underutilized_items' -Arguments @{ mod_namespace = 'minecraft'; save_json = $true } | Out-Null
 
 $injectedScript = @'
 NeoMcpEvents.register(event => {

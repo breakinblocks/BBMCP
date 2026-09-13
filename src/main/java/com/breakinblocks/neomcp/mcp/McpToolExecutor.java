@@ -63,5 +63,13 @@ public interface McpToolExecutor {
 
     JsonObject scanForLoops(String itemId, int maxDepth) throws Exception;
 
-    JsonObject captureRecipeCard(String recipeId) throws Exception;
+    JsonObject captureRecipeCard(String recipeId, boolean savePng) throws Exception;
+
+    JsonObject dumpRecipes(String modNamespace, String recipeType, boolean saveJson) throws Exception;
+
+    JsonObject analyzeRecipeComplexity(String itemId, boolean saveJson) throws Exception;
+
+    JsonObject checkRecipeCycles(String itemId, boolean saveJson) throws Exception;
+
+    JsonObject findUnderutilizedItems(String modNamespace, boolean saveJson) throws Exception;
 }

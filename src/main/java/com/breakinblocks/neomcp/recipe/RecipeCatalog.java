@@ -22,6 +22,8 @@ import java.util.Optional;
 
 /** A viewer-neutral, read-only view of a client-synchronised recipe manager. */
 public final class RecipeCatalog {
+    public static final String UNAVAILABLE_RECIPE_TYPE = "unavailable";
+
     private final RecipeManager recipes;
     private final HolderLookup.Provider registries;
 
@@ -102,12 +104,13 @@ public final class RecipeCatalog {
 
     private RecipeView view(RecipeHolder<?> holder) {
         Recipe<?> recipe = holder.value();
-        ResourceLocation type = requiredKey(BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType()), "recipe type");
+        ResourceLocation type = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
         ResourceLocation serializer = requiredKey(
                 BuiltInRegistries.RECIPE_SERIALIZER.getKey(recipe.getSerializer()), "recipe serializer");
         ItemStack result = recipe.getResultItem(registries);
         List<IngredientView> ingredients = recipe.getIngredients().stream().map(this::ingredient).toList();
-        return new RecipeView(holder.id().toString(), type.toString(), serializer.toString(), recipe.getGroup(),
+        return new RecipeView(holder.id().toString(), type == null ? UNAVAILABLE_RECIPE_TYPE : type.toString(),
+                serializer.toString(), recipe.getGroup(),
                 item(result), ingredients);
     }
 

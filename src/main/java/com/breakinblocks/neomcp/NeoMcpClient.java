@@ -13,7 +13,9 @@ import com.breakinblocks.neomcp.recipe.ClientRecipeCatalog;
 import com.breakinblocks.neomcp.recipe.ClientRecipeViewerSupport;
 import com.breakinblocks.neomcp.recipe.IRecipeViewerAdapter;
 import com.breakinblocks.neomcp.recipe.RecipeCatalog;
+import com.breakinblocks.neomcp.recipe.RecipeAnalysis;
 import com.breakinblocks.neomcp.recipe.RecipeViewerAdapterRegistry;
+import com.breakinblocks.neomcp.util.JsonResultWriter;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
@@ -65,6 +67,7 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -539,12 +542,22 @@ public final class NeoMcpClient {
                             .sorted(Comparator.comparing(key -> key.location().toString()))
                             .toList();
                     JsonArray matches = new JsonArray();
+                    JsonArray skippedLootTables = new JsonArray();
                     for (ResourceKey<LootTable> key : keys) {
                         LootTable table = lootTables.get(key)
                                 .map(holder -> holder.value())
                                 .orElseThrow(() -> new IllegalStateException(
                                         "Loot table registry entry disappeared during search: " + key.location()));
-                        JsonElement json = encodeLootTable(registries, key.location(), table);
+                        JsonElement json;
+                        try {
+                            json = encodeLootTable(registries, key.location(), table);
+                        } catch (RuntimeException exception) {
+                            JsonObject skipped = new JsonObject();
+                            skipped.addProperty("id", key.location().toString());
+                            skipped.addProperty("error", exception.getMessage());
+                            skippedLootTables.add(skipped);
+                            continue;
+                        }
                         if (containsItemIdentifier(json, item.toString())) {
                             matches.add(key.location().toString());
                         }
@@ -553,6 +566,7 @@ public final class NeoMcpClient {
                     result.addProperty("item_id", item.toString());
                     result.addProperty("count", matches.size());
                     result.add("loot_tables", matches);
+                    result.add("skipped_loot_tables", skippedLootTables);
                     return result;
                 });
             });
@@ -690,6 +704,13 @@ public final class NeoMcpClient {
                 result.addProperty("emi_adapter_available", false);
                 result.addProperty("rei_adapter_available", false);
                 result.addProperty("recipe_card_capture", ClientRecipeViewerSupport.jeiRuntimeAvailable());
+                JsonObject limits = new JsonObject();
+                limits.addProperty("max_recipe_results", NeoMcpConfig.maxRecipeResults());
+                limits.addProperty("max_recipe_inline_bytes", NeoMcpConfig.maxRecipeInlineBytes());
+                limits.addProperty("max_recipe_tree_depth", NeoMcpConfig.maxRecipeTreeDepth());
+                limits.addProperty("max_recipe_loop_depth", NeoMcpConfig.maxRecipeLoopDepth());
+                limits.addProperty("max_recipe_graph_nodes", NeoMcpConfig.maxRecipeGraphNodes());
+                result.add("limits", limits);
                 return result;
             });
         }
@@ -796,7 +817,7 @@ public final class NeoMcpClient {
         }
 
         @Override
-        public JsonObject captureRecipeCard(String recipeId) throws Exception {
+        public JsonObject captureRecipeCard(String recipeId, boolean savePng) throws Exception {
             return callOnClientThread(() -> {
                 Minecraft minecraft = Minecraft.getInstance();
                 if (!RenderSystem.isOnRenderThread()) {
@@ -857,12 +878,20 @@ public final class NeoMcpClient {
                             "neomcp-recipe-card-", ".png");
                     image.writeToFile(temporaryPng);
                     byte[] png = Files.readAllBytes(temporaryPng);
+                    if (png.length == 0) {
+                        throw new IllegalStateException("Recipe card capture produced an empty PNG payload");
+                    }
                     JsonObject result = new JsonObject();
                     result.addProperty("recipe_id", id.toString());
                     result.addProperty("viewer", adapter.id());
                     result.addProperty("width", width);
                     result.addProperty("height", height);
                     result.addProperty("mime_type", "image/png");
+                    result.addProperty("saved_to_screenshots", savePng);
+                    if (savePng) {
+                        Path screenshotPath = saveRecipeCardPng(minecraft, png);
+                        result.addProperty("screenshot_path", screenshotPath.toString());
+                    }
                     result.addProperty("png_base64", Base64.getEncoder().encodeToString(png));
                     return result;
                 } finally {
@@ -900,6 +929,83 @@ public final class NeoMcpClient {
                     }
                 }
             });
+        }
+
+        @Override
+        public JsonObject dumpRecipes(String modNamespace, String recipeType, boolean saveJson) throws Exception {
+            return callOnClientThread(() -> {
+                JsonObject result = new RecipeAnalysis(ClientRecipeCatalog.create())
+                        .dumpRecipes(modNamespace, recipeType,
+                                saveJson ? Integer.MAX_VALUE : NeoMcpConfig.maxRecipeResults(),
+                                saveJson ? Long.MAX_VALUE : NeoMcpConfig.maxRecipeInlineBytes());
+                return saveJson ? saveRecipeResult(result, "recipes", "catalog", "recipes") : result;
+            });
+        }
+
+        @Override
+        public JsonObject analyzeRecipeComplexity(String itemId, boolean saveJson) throws Exception {
+            return callOnClientThread(() -> {
+                ResourceLocation id = parseResourceLocation(itemId, "item");
+                JsonObject result = new RecipeAnalysis(ClientRecipeCatalog.create()).analyzeItem(id);
+                return saveJson ? saveRecipeResult(result, "analysis", "complexity", null) : result;
+            });
+        }
+
+        @Override
+        public JsonObject checkRecipeCycles(String itemId, boolean saveJson) throws Exception {
+            return callOnClientThread(() -> {
+                ResourceLocation id = parseResourceLocation(itemId, "item");
+                JsonObject result = new RecipeAnalysis(ClientRecipeCatalog.create()).detectCycles(id);
+                return saveJson ? saveRecipeResult(result, "analysis", "cycles", "cycles") : result;
+            });
+        }
+
+        @Override
+        public JsonObject findUnderutilizedItems(String modNamespace, boolean saveJson) throws Exception {
+            return callOnClientThread(() -> {
+                JsonObject result = new RecipeAnalysis(ClientRecipeCatalog.create())
+                        .underutilizedItems(modNamespace,
+                                saveJson ? Integer.MAX_VALUE : NeoMcpConfig.maxRecipeResults());
+                return saveJson ? saveRecipeResult(result, "analysis", "underutilized", "items") : result;
+            });
+        }
+
+        private JsonObject saveRecipeResult(
+                JsonObject result, String operation, String subdirectory, String largeField)
+                throws IOException {
+            JsonResultWriter.DumpMetadata metadata = JsonResultWriter.write(
+                    result, operation, subdirectory, Minecraft.getInstance().gameDirectory.toPath());
+            if (largeField != null) {
+                result.remove(largeField);
+            }
+            result.addProperty("saved_to_file", true);
+            result.addProperty("file_path", metadata.path().toString());
+            result.addProperty("file_format", "json");
+            result.addProperty("file_size_bytes", metadata.sizeBytes());
+            return result;
+        }
+
+        private Path saveRecipeCardPng(Minecraft minecraft, byte[] png) throws IOException {
+            Path gameDirectory = minecraft.gameDirectory.toPath().toAbsolutePath().normalize().toRealPath();
+            Path screenshotDirectory = gameDirectory.resolve("screenshots").normalize();
+            Files.createDirectories(screenshotDirectory);
+            if (Files.isSymbolicLink(screenshotDirectory)) {
+                throw new IllegalStateException("Recipe card screenshot directory must not be a symbolic link");
+            }
+            Path resolvedScreenshotDirectory = screenshotDirectory.toRealPath();
+            if (!gameDirectory.equals(resolvedScreenshotDirectory.getParent())) {
+                throw new IllegalStateException("Recipe card screenshot directory escaped the game directory");
+            }
+            Path screenshotPath = screenshotDirectory.resolve("neomcp_recipe_"
+                    + UUID.randomUUID() + ".png").normalize();
+            if (!resolvedScreenshotDirectory.equals(screenshotPath.getParent())) {
+                throw new IllegalStateException("Recipe card screenshot path escaped its target directory");
+            }
+            Files.write(screenshotPath, png, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            if (!Files.isRegularFile(screenshotPath) || Files.size(screenshotPath) == 0L) {
+                throw new IllegalStateException("Recipe card screenshot was not written: " + screenshotPath);
+            }
+            return screenshotPath;
         }
 
         private IRecipeViewerAdapter recipeAdapter() {

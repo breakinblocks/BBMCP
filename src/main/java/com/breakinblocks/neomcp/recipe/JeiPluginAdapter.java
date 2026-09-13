@@ -161,7 +161,11 @@ public final class JeiPluginAdapter implements IRecipeViewerAdapter {
         for (int index = 0; index < recipes.size(); index++) {
             JsonObject recipe = recipes.get(index).getAsJsonObject();
             ResourceLocation recipeId = requiredResourceLocation(recipe.get("id").getAsString(), "recipe id");
-            recipe.add("required_workstations", workstationIds(runtime, catalog.holder(recipeId).value()));
+            try {
+                recipe.add("required_workstations", workstationIds(runtime, catalog.holder(recipeId).value()));
+            } catch (IllegalStateException exception) {
+                recipe.addProperty("workstation_metadata_unavailable", exception.getMessage());
+            }
             JsonArray inputs = recipe.getAsJsonArray("inputs");
             for (int inputIndex = 0; inputIndex < inputs.size(); inputIndex++) {
                 JsonArray children = inputs.get(inputIndex).getAsJsonObject().getAsJsonArray("children");
@@ -176,8 +180,10 @@ public final class JeiPluginAdapter implements IRecipeViewerAdapter {
     }
 
     private JsonArray workstationIds(IJeiRuntime runtime, Recipe<?> recipe) {
-        ResourceLocation typeId = requiredKey(
-                BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType()), "recipe type");
+        ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
+        if (typeId == null) {
+            throw new IllegalStateException("Recipe type is unavailable in the Minecraft registry");
+        }
         RecipeType<?> jeiType = runtime.getJeiHelpers().getRecipeType(typeId)
                 .orElseThrow(() -> new IllegalStateException("JEI recipe type is unavailable: " + typeId));
         JsonArray workstations = new JsonArray();

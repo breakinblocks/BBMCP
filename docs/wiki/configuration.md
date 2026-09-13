@@ -1,15 +1,16 @@
 # Configuration
 
-NeoMCP registers a NeoForge client configuration. It is generated at:
+NeoMCP registers a NeoForge client-side configuration. It is generated at:
 
 ```text
 <instance>/config/neomcp-client.toml
 ```
 
 For this repository's development run, `<instance>` is `run`. Values are
-created after the client has started once. Restart the client after changing
-the file; this is especially important for the listener port and executor
-settings.
+created after the client has started once. This configuration is client-side:
+it applies to the NeoMCP HTTP service running in that client instance, not to a
+dedicated server. Restart the client after changing the file; this is
+especially important for the listener port and executor settings.
 
 ## Settings
 
@@ -17,28 +18,40 @@ settings.
 | --- | ---: | --- |
 | `enableServer` | `true` | Start the HTTP server during client setup. |
 | `port` | `8080` | Loopback TCP port for `/mcp`; valid range `1`-`65535`. |
-| `requestThreadCount` | `8` | Concurrent HTTP request workers. |
-| `requestQueueCapacity` | `16` | Requests waiting for an HTTP worker. |
-| `maxRequestBytes` | `1048576` | Maximum JSON request body size. |
-| `sseConnectionLimit` | `8` | Maximum MCP event-stream connections. |
-| `sseQueueCapacity` | `32` | Pending notifications per event stream. |
-| `sseHeartbeatSeconds` | `15` | Keep-alive interval for idle event streams. |
-| `actionTimeoutSeconds` | `5` | Time allowed for a queued client, server, or KubeJS action. |
-| `maxActionTicks` | `200` | Maximum duration accepted by primitive `look_at` and `move` actions. |
-| `maxRecipeResults` | `1000` | Maximum recipes returned by `find_recipes`. |
-| `maxRecipeTreeDepth` | `5` | Maximum depth accepted by `get_recipe_tree` and loop scans. |
-| `maxRecipeGraphNodes` | `5000` | Maximum recipe graph expansion work units per tree or loop scan. |
-| `recipeCardWidth` | `320` | Width in pixels of the off-screen `capture_recipe_card` framebuffer. |
-| `recipeCardHeight` | `180` | Height in pixels of the off-screen `capture_recipe_card` framebuffer. |
-| `maxNearbyEntityRadius` | `512.0` | Maximum radius accepted by `get_nearby_entities`. |
-| `maxLogLines` | `100` | Number of final lines returned by `read_latest_logs`. |
-| `maxCommandLength` | `32768` | Maximum `execute_command` string length. |
-| `maxKubejsScriptLength` | `262144` | Maximum injected KubeJS script length. |
+| `requestThreadCount` | `8` | Concurrent HTTP request workers; valid `1`-`64`. |
+| `requestQueueCapacity` | `16` | Requests waiting for an HTTP worker; valid `1`-`1024`. |
+| `maxRequestBytes` | `1048576` | Maximum JSON request body size; valid `4096`-`16777216`. |
+| `sseConnectionLimit` | `8` | Maximum MCP event-stream connections; valid `1`-`128`. |
+| `sseQueueCapacity` | `32` | Pending notifications per event stream; valid `1`-`1024`. |
+| `sseHeartbeatSeconds` | `15` | Keep-alive interval for idle event streams; valid `1`-`300`. |
+| `actionTimeoutSeconds` | `5` | Time allowed for a queued client, server, or KubeJS action; valid `1`-`120`. |
+| `maxActionTicks` | `200` | Maximum duration accepted by primitive `look_at` and `move` actions; valid `1`-`1200`. |
+| `maxRecipeResults` | `1000` | Maximum recipes returned by `find_recipes`; valid `1`-`10000`. |
+| `maxRecipeInlineBytes` | `2000000` | Maximum UTF-8 bytes returned inline by advanced recipe dumps; valid `64000`-`16000000`. |
+| `maxRecipeTreeDepth` | `5` | Maximum `get_recipe_tree` depth; valid `0`-`32`. |
+| `maxRecipeLoopDepth` | `5` | Maximum `scan_for_loops` depth; valid `1`-`32`. |
+| `maxRecipeGraphNodes` | `5000` | Maximum recipe graph expansion work units per tree or loop scan; valid `100`-`100000`. |
+| `recipeCardWidth` | `320` | Width in pixels of the off-screen `capture_recipe_card` framebuffer; valid `64`-`2048`. |
+| `recipeCardHeight` | `180` | Height in pixels of the off-screen `capture_recipe_card` framebuffer; valid `64`-`2048`. |
+| `maxNearbyEntityRadius` | `512.0` | Maximum radius accepted by `get_nearby_entities`; valid `0.0`-`4096.0`. |
+| `maxLogLines` | `100` | Number of final lines returned by `read_latest_logs`; valid `1`-`10000`. |
+| `maxCommandLength` | `32768` | Maximum `execute_command` string length; valid `1`-`262144`. |
+| `maxKubejsScriptLength` | `262144` | Maximum injected KubeJS script length; valid `1`-`1048576`. |
 | `allowCommandExecution` | `true` | Publish and allow `execute_command`. |
 | `allowKubejsScriptInjection` | `true` | Publish and allow `inject_kubejs_script`. |
 
-NeoForge clamps invalid values to the declared ranges. The Java-side bounds
-are also enforced before a request reaches Minecraft.
+NeoForge validates values against the declared ranges. The Java-side request
+bounds are also enforced before a request reaches Minecraft; invalid tool
+arguments are rejected explicitly.
+
+## Recipe limits
+
+Recipe depth limits are independent: `maxRecipeTreeDepth` controls
+`get_recipe_tree`, while `maxRecipeLoopDepth` controls `scan_for_loops`.
+`get_recipe_tree` defaults an omitted `max_depth` to `maxRecipeTreeDepth`, and
+`scan_for_loops` defaults it to `maxRecipeLoopDepth`. Graph expansion is also
+bounded by `maxRecipeGraphNodes`; these limits do not alter synchronized recipe
+data.
 
 ## Security switches
 

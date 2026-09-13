@@ -501,9 +501,11 @@ public final class McpHttpServer implements AutoCloseable {
         tools.add(recipeItemDepthTool(
                 "scan_for_loops",
                 "Scan a bounded recipe graph for circular item dependencies."));
-        tools.add(recipeIdTool(
-                "capture_recipe_card",
-                "Render one JEI recipe card into an off-screen framebuffer and return a PNG image."));
+        tools.add(captureRecipeCardTool());
+        tools.add(dumpRecipesTool());
+        tools.add(recipeAnalysisTool("analyze_recipe_complexity", "Calculate bounded recipe complexity metrics for an item."));
+        tools.add(recipeAnalysisTool("check_recipe_cycles", "Detect bounded recipe cycles reachable from an item."));
+        tools.add(recipeAnalysisTool("find_underutilized_items", "Find producible items in a namespace with no recipe consumers."));
         for (McpDynamicTool dynamicTool : dynamicToolRegistry.snapshot().values()) {
             JsonObject definition = new JsonObject();
             definition.addProperty("name", dynamicTool.name());
@@ -562,6 +564,10 @@ public final class McpHttpServer implements AutoCloseable {
             case "get_workstation_recipes" -> getWorkstationRecipes(arguments);
             case "scan_for_loops" -> scanForLoops(arguments);
             case "capture_recipe_card" -> captureRecipeCard(arguments);
+            case "dump_recipes" -> dumpRecipes(arguments);
+            case "analyze_recipe_complexity" -> analyzeRecipeComplexity(arguments);
+            case "check_recipe_cycles" -> checkRecipeCycles(arguments);
+            case "find_underutilized_items" -> findUnderutilizedItems(arguments);
             default -> callDynamicTool(name, arguments);
         };
     }
@@ -958,7 +964,7 @@ public final class McpHttpServer implements AutoCloseable {
     private JsonObject getRecipeTree(JsonObject arguments) throws Exception {
         requireOnlyArguments(arguments, "item_id", "max_depth");
         String itemId = requiredString(arguments, "item_id", "get_recipe_tree");
-        int maxDepth = optionalInteger(arguments, "max_depth", "get_recipe_tree", 3);
+        int maxDepth = optionalInteger(arguments, "max_depth", "get_recipe_tree", NeoMcpConfig.maxRecipeTreeDepth());
         requireRecipeDepth(maxDepth, "get_recipe_tree");
         try {
             return structuredToolResult(toolExecutor.getRecipeTree(itemId, maxDepth));
@@ -990,9 +996,10 @@ public final class McpHttpServer implements AutoCloseable {
     private JsonObject scanForLoops(JsonObject arguments) throws Exception {
         requireOnlyArguments(arguments, "item_id", "max_depth");
         String itemId = requiredString(arguments, "item_id", "scan_for_loops");
-        int maxDepth = optionalInteger(arguments, "max_depth", "scan_for_loops", 5);
-        if (maxDepth < 1 || maxDepth > 5) {
-            throw new InvalidParamsException("scan_for_loops max_depth must be between 1 and 5");
+        int maxDepth = optionalInteger(arguments, "max_depth", "scan_for_loops", NeoMcpConfig.maxRecipeLoopDepth());
+        if (maxDepth < 1 || maxDepth > NeoMcpConfig.maxRecipeLoopDepth()) {
+            throw new InvalidParamsException(
+                    "scan_for_loops max_depth must be between 1 and " + NeoMcpConfig.maxRecipeLoopDepth());
         }
         try {
             return structuredToolResult(toolExecutor.scanForLoops(itemId, maxDepth));
@@ -1002,10 +1009,11 @@ public final class McpHttpServer implements AutoCloseable {
     }
 
     private JsonObject captureRecipeCard(JsonObject arguments) throws Exception {
-        requireOnlyArguments(arguments, "recipe_id");
+        requireOnlyArguments(arguments, "recipe_id", "save_png");
         String recipeId = requiredString(arguments, "recipe_id", "capture_recipe_card");
+        boolean savePng = optionalBoolean(arguments, "save_png", "capture_recipe_card");
         try {
-            JsonObject capture = toolExecutor.captureRecipeCard(recipeId);
+            JsonObject capture = toolExecutor.captureRecipeCard(recipeId, savePng);
             JsonElement encodedImage = capture.get("png_base64");
             if (encodedImage == null || !encodedImage.isJsonPrimitive()
                     || !encodedImage.getAsJsonPrimitive().isString()
@@ -1017,6 +1025,51 @@ public final class McpHttpServer implements AutoCloseable {
             return imageToolResult(encodedImage.getAsString(), metadata);
         } catch (Exception exception) {
             return toolErrorResult("Recipe card capture failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject dumpRecipes(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "mod_namespace", "recipe_type", "save_json");
+        String namespace = optionalString(arguments, "mod_namespace", "dump_recipes", "");
+        String type = optionalString(arguments, "recipe_type", "dump_recipes", "");
+        boolean saveJson = optionalBoolean(arguments, "save_json", "dump_recipes");
+        try {
+            return structuredToolResult(toolExecutor.dumpRecipes(namespace, type, saveJson));
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe dump failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject analyzeRecipeComplexity(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "item_id", "save_json");
+        String itemId = requiredString(arguments, "item_id", "analyze_recipe_complexity");
+        boolean saveJson = optionalBoolean(arguments, "save_json", "analyze_recipe_complexity");
+        try {
+            return structuredToolResult(toolExecutor.analyzeRecipeComplexity(itemId, saveJson));
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe complexity analysis failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject checkRecipeCycles(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "item_id", "save_json");
+        String itemId = requiredString(arguments, "item_id", "check_recipe_cycles");
+        boolean saveJson = optionalBoolean(arguments, "save_json", "check_recipe_cycles");
+        try {
+            return structuredToolResult(toolExecutor.checkRecipeCycles(itemId, saveJson));
+        } catch (Exception exception) {
+            return toolErrorResult("Recipe cycle analysis failed: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject findUnderutilizedItems(JsonObject arguments) throws Exception {
+        requireOnlyArguments(arguments, "mod_namespace", "save_json");
+        String namespace = requiredString(arguments, "mod_namespace", "find_underutilized_items");
+        boolean saveJson = optionalBoolean(arguments, "save_json", "find_underutilized_items");
+        try {
+            return structuredToolResult(toolExecutor.findUnderutilizedItems(namespace, saveJson));
+        } catch (Exception exception) {
+            return toolErrorResult("Underutilized item analysis failed: " + errorMessage(exception));
         }
     }
 
@@ -1359,12 +1412,55 @@ public final class McpHttpServer implements AutoCloseable {
     private JsonObject recipeItemDepthTool(String name, String description) {
         JsonObject result = recipeItemTool(name, description);
         JsonObject properties = result.getAsJsonObject("inputSchema").getAsJsonObject("properties");
-        properties.add("max_depth", integerSchema());
+        if ("get_recipe_tree".equals(name)) {
+            properties.add("max_depth", integerSchema(0, NeoMcpConfig.maxRecipeTreeDepth(),
+                    NeoMcpConfig.maxRecipeTreeDepth()));
+        } else if ("scan_for_loops".equals(name)) {
+            properties.add("max_depth", integerSchema(1, NeoMcpConfig.maxRecipeLoopDepth(),
+                    NeoMcpConfig.maxRecipeLoopDepth()));
+        } else {
+            throw new IllegalArgumentException("Unknown depth-limited recipe tool: " + name);
+        }
         return result;
     }
 
     private JsonObject recipeIdTool(String name, String description) {
         return tool(name, description, "recipe_id", "string", true);
+    }
+
+    private JsonObject captureRecipeCardTool() {
+        JsonObject result = recipeIdTool(
+                "capture_recipe_card",
+                "Render one JEI recipe card into an off-screen framebuffer and return a PNG image, optionally saving it to screenshots.");
+        JsonObject properties = result.getAsJsonObject("inputSchema").getAsJsonObject("properties");
+        JsonObject savePng = new JsonObject();
+        savePng.addProperty("type", "boolean");
+        properties.add("save_png", savePng);
+        return result;
+    }
+
+    private JsonObject dumpRecipesTool() {
+        JsonObject result = tool("dump_recipes", "Dump synchronized recipes to a generated JSON file when requested.");
+        JsonObject properties = result.getAsJsonObject("inputSchema").getAsJsonObject("properties");
+        properties.add("mod_namespace", stringSchema());
+        properties.add("recipe_type", stringSchema());
+        properties.add("save_json", booleanSchema());
+        return result;
+    }
+
+    private JsonObject recipeAnalysisTool(String name, String description) {
+        JsonObject result = tool(name, description);
+        JsonObject properties = result.getAsJsonObject("inputSchema").getAsJsonObject("properties");
+        if ("find_underutilized_items".equals(name)) {
+            properties.add("mod_namespace", stringSchema());
+        } else {
+            properties.add("item_id", stringSchema());
+        }
+        properties.add("save_json", booleanSchema());
+        JsonArray required = new JsonArray();
+        required.add("find_underutilized_items".equals(name) ? "mod_namespace" : "item_id");
+        result.getAsJsonObject("inputSchema").add("required", required);
+        return result;
     }
 
     private JsonObject ftbQuestIdSchema() {
@@ -1378,6 +1474,14 @@ public final class McpHttpServer implements AutoCloseable {
     private JsonObject integerSchema() {
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "integer");
+        return schema;
+    }
+
+    private JsonObject integerSchema(int minimum, int maximum, int defaultValue) {
+        JsonObject schema = integerSchema();
+        schema.addProperty("minimum", minimum);
+        schema.addProperty("maximum", maximum);
+        schema.addProperty("default", defaultValue);
         return schema;
     }
 

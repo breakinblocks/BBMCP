@@ -22,8 +22,9 @@ final class RecipeGraph {
     static JsonObject buildTree(RecipeCatalog catalog, ResourceLocation itemId, int maxDepth) {
         Objects.requireNonNull(catalog, "catalog");
         Objects.requireNonNull(itemId, "itemId");
-        if (maxDepth < 0) {
-            throw new IllegalArgumentException("maxDepth must not be negative");
+        if (maxDepth < 0 || maxDepth > NeoMcpConfig.maxRecipeTreeDepth()) {
+            throw new IllegalArgumentException(
+                    "maxDepth must be between 0 and " + NeoMcpConfig.maxRecipeTreeDepth());
         }
 
         RecipeIndex index = RecipeIndex.create(catalog);
@@ -51,8 +52,9 @@ final class RecipeGraph {
     static JsonObject scanLoops(RecipeCatalog catalog, ResourceLocation itemId, int maxDepth) {
         Objects.requireNonNull(catalog, "catalog");
         Objects.requireNonNull(itemId, "itemId");
-        if (maxDepth < 1) {
-            throw new IllegalArgumentException("maxDepth must be positive");
+        if (maxDepth < 1 || maxDepth > NeoMcpConfig.maxRecipeLoopDepth()) {
+            throw new IllegalArgumentException(
+                    "maxDepth must be between 1 and " + NeoMcpConfig.maxRecipeLoopDepth());
         }
 
         RecipeIndex index = RecipeIndex.create(catalog);

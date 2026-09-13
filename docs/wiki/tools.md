@@ -108,8 +108,12 @@ pathfinding, mouse automation, or Baritone integration.
 | `get_recipe_tree` | `{ "item_id": string, "max_depth": int? }` | Connected client; JEI adds workstation data when active. |
 | `get_item_usages` | `{ "item_id": string }` | Connected client; JEI adds category/catalyst matches when active. |
 | `get_workstation_recipes` | `{ "machine_id": string }` | JEI 19.x runtime and a catalyst item. |
-| `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Connected client; depth is capped at 5. |
-| `capture_recipe_card` | `{ "recipe_id": string }` | JEI 19.x runtime and render thread. |
+| `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Connected client; depth is capped by `maxRecipeLoopDepth`. |
+| `capture_recipe_card` | `{ "recipe_id": string, "save_png": boolean? }` | JEI 19.x runtime and render thread; optionally saves a generated PNG under `screenshots/`. |
+| `dump_recipes` | `{ "mod_namespace": string?, "recipe_type": string?, "save_json": boolean? }` | Dumps synchronized recipe records, optionally filtered and persisted under `dumps/recipes/`. |
+| `analyze_recipe_complexity` | `{ "item_id": string, "save_json": boolean? }` | Bounded namespace-diversity and sequential-depth metrics. |
+| `check_recipe_cycles` | `{ "item_id": string, "save_json": boolean? }` | Bounded cycle detection from an item root. |
+| `find_underutilized_items` | `{ "mod_namespace": string, "save_json": boolean? }` | Producible namespace items with zero canonical consumers. |
 
 Canonical recipe data comes from the synchronized vanilla `RecipeManager`.
 The JEI adapter uses `IRecipeManager` lookups, focus roles, catalyst
@@ -118,6 +122,17 @@ renders the card into an off-screen framebuffer and returns `image/png`
 content; it does not capture the surrounding JEI sidebar. EMI and REI are
 reported when detected, but their adapters are not implemented yet. See
 [Recipe viewers and recipe graph](recipes.md).
+
+Recipe analysis tools return JSON in `structuredContent`. Set `save_json: true`
+to persist a copy below the active instance's `dumps/` directory. Responses then
+include `saved_to_file`, `file_path`, `file_format`, and `file_size_bytes`.
+Generated filenames are UUID-based. `dump_recipes` uses `dumps/recipes/`; the
+three analysis tools use `dumps/analysis/`.
+
+Set `save_png: true` when a durable image is needed for a report. NeoMCP
+generates a `neomcp_recipe_<uuid>.png` filename under the active instance's
+`screenshots/` directory and returns `saved_to_screenshots` plus
+`screenshot_path`. Callers cannot provide an arbitrary output path.
 
 ## Dynamic KubeJS tools
 
