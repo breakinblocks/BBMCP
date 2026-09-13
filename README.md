@@ -8,6 +8,10 @@ MCP JSON-RPC.
 This project is intended for local development and automation. It is not an
 internet-facing server and currently has no authentication layer.
 
+The maintained technical documentation is in the [NeoMCP wiki](docs/wiki/README.md).
+The [CurseForge description](docs/curseforge-description.md) contains a
+publish-ready overview, installation steps, and a short usage guide.
+
 ## Project metadata
 
 - Mod name: `NeoMCP`
@@ -47,14 +51,16 @@ single-player save named `New World`, making the client ready for in-world
 tools during development. Change the quick-play arguments in `build.gradle`
 when a different test save is required.
 
-When the client is running, NeoMCP listens on:
+When the client is running, NeoMCP listens on the default port:
 
 ```text
 http://localhost:8080/mcp
 ```
 
-The server binds to loopback (`127.0.0.1`) and accepts `POST` requests with
-the `application/json` content type. It implements MCP JSON-RPC 2.0 with
+The port and request/resource limits are configurable in
+`config/neomcp-client.toml`; see [Configuration](docs/wiki/configuration.md).
+The server always binds to loopback (`127.0.0.1`) and accepts `POST` requests
+with the `application/json` content type. It implements MCP JSON-RPC 2.0 with
 protocol version `2024-11-05`.
 
 ## MCP client configuration
@@ -66,7 +72,9 @@ http://localhost:8080/mcp
 ```
 
 The repository records the completed configuration audit in
-[docs/phase0-global-mcp-configuration.md](docs/phase0-global-mcp-configuration.md).
+[docs/phase0-global-mcp-configuration.md](docs/phase0-global-mcp-configuration.md),
+and repeatable setup instructions are in
+[Agent installation](docs/wiki/installation.md).
 The actual client configuration files are user-level files and are not stored
 in Git.
 
@@ -123,12 +131,13 @@ Invoke-RestMethod -Uri http://localhost:8080/mcp -Method Post `
 | Tool | Arguments | Result |
 | --- | --- | --- |
 | `execute_command` | `{ "command": string }` | Sends a command through the connected Minecraft client/server connection. Do not include the leading `/`. |
+| `list_mods` | none | Sorted IDs, display names, and versions for every mod loaded in the client JVM. |
 | `get_player_info` | none | Local player X, Y, Z, dimension, and health. |
 | `get_block_entity_data` | `{ "x": int, "y": int, "z": int }` | Block entity type, full NBT/SNBT metadata, and data components. |
 | `inspect_item_components` | none | Main-hand item ID, stack state, exact data components, and component patch. |
 | `query_registry` | `{ "registry": string, "namespace": string }` | Registered object IDs in the requested registry and namespace. |
-| `read_latest_logs` | none | The last 100 lines of `logs/latest.log`. |
-| `get_nearby_entities` | `{ "x": number, "y": number, "z": number, "radius": number }` | Entity state and serialized data in the requested area. Radius is limited to 512 blocks. |
+| `read_latest_logs` | none | The configured number of final lines from `logs/latest.log` (100 by default). |
+| `get_nearby_entities` | `{ "x": number, "y": number, "z": number, "radius": number }` | Entity state and serialized data in the requested area. Radius is limited to 512 blocks by default. |
 
 ### Datapack and loot tables
 
@@ -255,6 +264,12 @@ The development client must be in a world for player, entity, FTB Quests, and
 command tools to succeed. The automatic `New World` quick-play configuration
 is provided for this purpose.
 
-Do not expose port 8080 beyond the local machine. The server is an internal
+NeoMCP does not yet simulate physical player navigation. The supported way to
+move a player during development is `execute_command` with a server command
+such as `/tp` (sent without the slash). The planned navigation API and
+optional Baritone/FTB/recipe-mod compatibility strategy are documented in the
+[movement and compatibility roadmap](docs/wiki/movement-and-compatibility.md).
+
+Do not expose the configured port beyond the local machine. The server is an internal
 developer endpoint and is intentionally not designed for hostile network
 traffic.

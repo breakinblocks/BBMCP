@@ -1,0 +1,89 @@
+# Tool reference
+
+Tool results contain normal MCP text content and, where useful, a
+`structuredContent` JSON object. Screenshot and chapter-canvas tools can also
+return an MCP `image` content block.
+
+## Core inspection and development tools
+
+| Tool | Arguments | Availability |
+| --- | --- | --- |
+| `list_mods` | none | Client JVM; works at the title screen. |
+| `get_player_info` | none | Active local player in a world. |
+| `execute_command` | `{ "command": string }` | Connected client/server; omit `/`. |
+| `get_block_entity_data` | `{ "x": int, "y": int, "z": int }` | Loaded block entity in the active client level. |
+| `inspect_item_components` | none | Active local player; reads the main-hand stack. |
+| `query_registry` | `{ "registry": string, "namespace": string }` | Active client level registry access. |
+| `read_latest_logs` | none | Active game directory; returns the configured final lines. |
+| `get_nearby_entities` | `{ "x": number, "y": number, "z": number, "radius": number }` | Active client level; radius is capped by config. |
+
+`list_mods` returns deterministic, ID-sorted entries:
+
+```json
+{
+  "count": 2,
+  "mods": [
+    { "id": "minecraft", "name": "Minecraft", "version": "1.21.1" },
+    { "id": "neomcp", "name": "NeoMCP", "version": "0.1.0" }
+  ]
+}
+```
+
+Use it before an optional integration call. It reports loaded metadata; it
+does not prove that a particular world or server resource is ready.
+
+## Datapack and loot tables
+
+| Tool | Arguments | Availability |
+| --- | --- | --- |
+| `list_loot_tables` | none | Active integrated server. |
+| `get_loot_table` | `{ "loot_table_id": string }` | Active integrated server and loaded table. |
+| `search_loot_tables` | `{ "item_id": string }` | Active integrated server. |
+
+These tools read the integrated server's reloadable registry, not a jar or a
+datapack directory directly. They therefore reflect the active world's loaded
+resources and require a local single-player world.
+
+## KubeJS
+
+| Tool | Arguments | Availability |
+| --- | --- | --- |
+| `inject_kubejs_script` | `{ "script": string }` | KubeJS loaded and connected to a world. |
+
+The script is written to the fixed file
+`kubejs/server_scripts/neomcp_injected.js`, then the client sends `/reload`.
+The tool is privileged and can be disabled in configuration.
+
+## FTB Quests
+
+All FTB Quests tools first check that `ftbquests` is loaded. FTB IDs are
+unsigned 64-bit values and must be sent as exact hexadecimal strings. Do not
+send them as JSON numbers because JavaScript/JSON number handling can round
+large IDs.
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `open_quest_gui` | `{ "id": string, "object_type": "chapter" \| "quest" }` | Opens the requested chapter or quest. |
+| `get_chapter_layout` | `{ "chapter_id": string }` | Quest nodes, grid positions, sizes, and dependency links. |
+| `export_chapter_canvas` | `{ "chapter_id": string, "save_png": boolean? }` | Full chapter image without sidebar/search/inventory UI. |
+
+`save_png: true` stores the export below `screenshots/` using a generated file
+name. The image renderer uses bounded off-screen allocation and reports an
+error instead of allocating an unsafe canvas.
+
+## Screenshots
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `take_screenshot` | none | Main framebuffer saved under `screenshots/`. |
+| `update_take_screenshot` | none | Alias with the same UI-inclusive behavior. |
+
+When a `Screen` is active, the main framebuffer capture includes the rendered
+UI overlay. The chapter canvas export is separate: it renders only the FTB
+Quests chapter canvas and intentionally excludes normal surrounding UI.
+
+## Dynamic KubeJS tools
+
+Tools registered by KubeJS appear beside the built-in tools in `tools/list`.
+They use the schema supplied by the script and execute on the server thread.
+See [KubeJS bridge](kubejs.md) for registration and context details.
