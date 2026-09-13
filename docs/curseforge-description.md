@@ -1,6 +1,6 @@
-# NeoMCP
+# BBMCP
 
-NeoMCP is an internal development tool for Minecraft 1.21.1 on NeoForge. It
+BBMCP is an internal development tool for Minecraft 1.21.1 on NeoForge. It
 embeds a local HTTP Model Context Protocol (MCP) server inside the Minecraft
 client JVM, allowing AI coding agents and automation tools to inspect and
 interact with a running game.
@@ -11,7 +11,7 @@ tables, and the latest game logs. They can also execute Minecraft commands,
 capture screenshots, inspect FTB Quests chapters, export complete quest
 canvases, and register custom MCP tools through KubeJS scripts.
 
-FTB Quests and KubeJS are optional integrations. NeoMCP detects whether they
+FTB Quests and KubeJS are optional integrations. BBMCP detects whether they
 are loaded and only enables their tools when the corresponding mod is
 available. KubeJS tools are rebuilt automatically after server-script reloads,
 so modpack developers can expose custom pack mechanics to their AI workflow.
@@ -19,7 +19,7 @@ so modpack developers can expose custom pack mechanics to their AI workflow.
 ## Installation
 
 1. Install NeoForge for Minecraft 1.21.1.
-2. Download the NeoMCP `.jar` and place it in the instance's `mods` folder.
+2. Download the BBMCP `.jar` and place it in the instance's `mods` folder.
 3. Launch the NeoForge client and load or create a single-player world.
 4. Configure your MCP-capable coding agent to use:
 
@@ -28,13 +28,13 @@ so modpack developers can expose custom pack mechanics to their AI workflow.
    ```
 
 The HTTP server is enabled by default and binds only to `localhost`. The
-generated configuration file is `config/neomcp-client.toml`; use it to change
+generated configuration file is `config/bbmcp-client.toml`; use it to change
 the port, request limits, timeouts, or privileged tool switches. Restart the
 Minecraft client after changing the port or server settings.
 
 ## Usage
 
-Register `neomcp` as an HTTP MCP server in Codex, Claude Code, GitHub Copilot,
+Register `bbmcp` as an HTTP MCP server in Codex, Claude Code, GitHub Copilot,
 Antigravity/Agy, or another MCP-compatible client. Once Minecraft is running,
 the agent can discover the available tools with MCP `tools/list` and invoke
 them with `tools/call`.
@@ -59,4 +59,4 @@ KubeJS script injection can change the world or execute pack logic, so disable
 are not needed.
 
 For complete agent configuration examples, tool schemas, KubeJS bridge details,
-and compatibility guidance, see the [NeoMCP wiki](wiki/README.md).
+and compatibility guidance, see the [BBMCP wiki](wiki/README.md).

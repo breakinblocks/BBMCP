@@ -1,6 +1,6 @@
 # Recipe viewers and recipe graph
 
-NeoMCP separates recipe data from recipe-viewer UI APIs. The canonical data
+BBMCP separates recipe data from recipe-viewer UI APIs. The canonical data
 source is the recipe manager synchronized to the client connection. An
 optional viewer adapter adds category, catalyst, screen-opening, and render
 capabilities without making JEI, EMI, or REI a required runtime dependency.
@@ -49,7 +49,7 @@ the generic recipe graph cannot evaluate.
 
 ## Recipe configuration
 
-The limits are client-side settings in `config/neomcp-client.toml`. The current
+The limits are client-side settings in `config/bbmcp-client.toml`. The current
 values are also returned under `recipe_capabilities.limits` so an agent can adapt without
 guessing. `maxRecipeTreeDepth` and `maxRecipeLoopDepth` independently constrain
 the optional `max_depth` arguments. `maxRecipeGraphNodes` bounds traversal work
@@ -82,7 +82,7 @@ the instance's `dumps/` directory.
 The primary optional implementation targets JEI `19.25.0.322` for Minecraft
 1.21.1. The integration has two pieces:
 
-1. `NeoMcpJeiPlugin` is the `@JeiPlugin`/`IModPlugin` entry point. JEI supplies
+1. `BbmcpJeiPlugin` is the `@JeiPlugin`/`IModPlugin` entry point. JEI supplies
    the live `IJeiRuntime` through `onRuntimeAvailable`.
 2. `JeiPluginAdapter` uses that runtime's `IRecipeManager` for
    `createRecipeLookup`, `createRecipeCategoryLookup`, catalyst lookups,
@@ -90,7 +90,7 @@ The primary optional implementation targets JEI `19.25.0.322` for Minecraft
 
 The adapter is loaded by name only after JEI is reported as loaded and its
 runtime is present. This prevents a missing JEI jar from breaking a normal
-NeoMCP client or a dedicated server. `IRecipeViewerAdapter` contains no JEI
+BBMCP client or a dedicated server. `IRecipeViewerAdapter` contains no JEI
 types, so an EMI or REI implementation can be added without changing MCP
 dispatch or the canonical catalog.
 
@@ -122,8 +122,8 @@ part of the result.
 
 By default the intermediate PNG is deleted after encoding. Pass
 `"save_png": true` to additionally save the generated image as
-`screenshots/neomcp_recipe_<uuid>.png`; the response then includes
-`saved_to_screenshots: true` and `screenshot_path`. NeoMCP generates the
+`screenshots/bbmcp_recipe_<uuid>.png`; the response then includes
+`saved_to_screenshots: true` and `screenshot_path`. BBMCP generates the
 filename and confines the destination to the active instance's
 `screenshots/` directory, so reports can link the returned path.
 

@@ -1,14 +1,18 @@
 # Configuration
 
-NeoMCP registers a NeoForge client-side configuration. It is generated at:
+BBMCP registers a NeoForge client-side configuration. It is generated at:
 
 ```text
-<instance>/config/neomcp-client.toml
+<instance>/config/bbmcp-client.toml
 ```
+
+When upgrading from the pre-release NeoMCP build, rename the existing
+`neomcp-client.toml` to `bbmcp-client.toml` before starting BBMCP. The mod ID
+changed, so NeoForge will not read the old filename automatically.
 
 For this repository's development run, `<instance>` is `run`. Values are
 created after the client has started once. This configuration is client-side:
-it applies to the NeoMCP HTTP service running in that client instance, not to a
+it applies to the BBMCP HTTP service running in that client instance, not to a
 dedicated server. Restart the client after changing the file; this is
 especially important for the listener port and executor settings.
 
@@ -73,7 +77,7 @@ authentication mechanism: another local process can still call the endpoint.
 The following paths are intentionally not user-configurable:
 
 - `logs/latest.log` is resolved below the active game directory.
-- injected code is always `kubejs/server_scripts/neomcp_injected.js`.
+- injected code is always `kubejs/server_scripts/bbmcp_injected.js`.
 - screenshots and optional FTB canvas exports are stored below the active
   game directory's `screenshots` folder.
 

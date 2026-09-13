@@ -1,7 +1,7 @@
 # KubeJS bridge
 
-KubeJS is an optional dependency. When it is loaded, NeoMCP exposes the
-`NeoMcpEvents.register` server event and a wrapper for registering dynamic MCP
+KubeJS is an optional dependency. When it is loaded, BBMCP exposes the
+`BbmcpEvents.register` server event and a wrapper for registering dynamic MCP
 tools from JavaScript.
 
 ## Registering a tool
@@ -9,7 +9,7 @@ tools from JavaScript.
 Put a registration in a KubeJS server script:
 
 ```js
-NeoMcpEvents.register(event => {
+BbmcpEvents.register(event => {
   event.registerTool(
     'current_dimension',
     'Return the active server dimension.',
@@ -39,7 +39,7 @@ so a broken tool cannot be published as if it were healthy.
 
 ## Callback context
 
-The callback receives one `NeoMcpToolContext` object. Rhino exposes its Java
+The callback receives one `BbmcpToolContext` object. Rhino exposes its Java
 bean getters as the usual JavaScript properties.
 
 | Property | Type | Availability |
@@ -53,7 +53,7 @@ bean getters as the usual JavaScript properties.
 Use the availability methods before reading optional values:
 
 ```js
-NeoMcpEvents.register(event => {
+BbmcpEvents.register(event => {
   event.registerTool('player_uuid', 'Return the local server player UUID.', {
     type: 'object'
   }, context => {
@@ -82,12 +82,12 @@ the required guard.
 
 ## Reload lifecycle
 
-NeoMCP hooks KubeJS's server script load lifecycle. On each server-script
+BBMCP hooks KubeJS's server script load lifecycle. On each server-script
 reload, including `/reload`, it:
 
 1. opens a new registration generation;
 2. clears the previously published dynamic tool set from publication;
-3. fires `NeoMcpEvents.register`;
+3. fires `BbmcpEvents.register`;
 4. publishes the new generation atomically if registration succeeds;
 5. broadcasts `notifications/tools/list_changed` to connected MCP event
    streams.
@@ -99,14 +99,14 @@ generation cannot execute after a later reload.
 ## Script injection
 
 When KubeJS is present, `inject_kubejs_script` writes the supplied JavaScript
-to `kubejs/server_scripts/neomcp_injected.js` and dispatches `/reload`. This is
+to `kubejs/server_scripts/bbmcp_injected.js` and dispatches `/reload`. This is
 intended for development iteration, not production content deployment. Keep
 the script small enough for `maxKubejsScriptLength`, and inspect
 `read_latest_logs` after a reload if registration fails.
 
 ## Dedicated-server safety
 
-NeoMCP's HTTP server is a client-side service. The KubeJS plugin itself is
+BBMCP's HTTP server is a client-side service. The KubeJS plugin itself is
 side-safe and can be loaded with a dedicated server, but a dedicated server
 does not have a `Minecraft` client or `LocalPlayer`. Code must not assume that
 `minecraft` or `serverPlayer` exists just because KubeJS is loaded.

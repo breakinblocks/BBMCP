@@ -2,7 +2,7 @@
 
 ## Primitive client actions
 
-NeoMCP provides bounded client-tick actions for test automation. These are
+BBMCP provides bounded client-tick actions for test automation. These are
 input primitives, not a navigation system:
 
 | Tool | Arguments | Behavior |
@@ -34,7 +34,7 @@ movement cannot understand doors, claims, hazards, or a target's route. Use
 This boundary is deliberate: a future navigation adapter would need its own
 versioned pathfinding API, chunk-loading policy, claim policy, cancellation
 semantics, and safety limits. Baritone support is not planned for the current
-NeoMCP scope.
+BBMCP scope.
 
 ## Recipe viewer compatibility
 

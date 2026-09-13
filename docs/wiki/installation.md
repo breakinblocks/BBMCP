@@ -2,12 +2,12 @@
 
 ## Minecraft installation
 
-NeoMCP targets Minecraft `1.21.1`, NeoForge `21.1.x`, and Java 21.
+BBMCP targets Minecraft `1.21.1`, NeoForge `21.1.x`, and Java 21.
 
 For a packaged installation:
 
 1. Install a NeoForge 1.21.1 client instance.
-2. Put the NeoMCP jar in that instance's `mods` directory.
+2. Put the BBMCP jar in that instance's `mods` directory.
 3. Optionally install FTB Quests, KubeJS, and JEI to enable their
    integrations. JEI is required for viewer GUI, catalyst, and recipe-card
    operations; the canonical recipe tools do not require a viewer.
@@ -24,7 +24,20 @@ The development `runClient` configuration quick-plays the save named
 `New World`. Change the `--quickPlaySingleplayer` argument in `build.gradle`
 if another test save should be used.
 
-NeoMCP starts after client setup and, by default, serves MCP at:
+## Upgrading from NeoMCP
+
+BBMCP is a breaking rename of the pre-release NeoMCP identity. Before the
+first launch, rename `config/neomcp-client.toml` to
+`config/bbmcp-client.toml`, then update external MCP registrations from
+`neomcp` to `bbmcp`.
+
+If KubeJS is installed, move or remove the old
+`kubejs/server_scripts/neomcp_injected.js` before launching. Update scripts
+from `NeoMcpEvents` to `BbmcpEvents` and from `NeoMcpToolContext` to
+`BbmcpToolContext`; otherwise the old script may continue loading alongside
+the BBMCP-generated script.
+
+BBMCP starts after client setup and, by default, serves MCP at:
 
 ```text
 http://localhost:8080/mcp
@@ -40,8 +53,8 @@ Invoke-RestMethod -Uri http://localhost:8080/mcp -Method Post `
 
 ## Agent registration
 
-The server name should be `neomcp`. Replace `8080` everywhere if the port is
-changed in `config/neomcp-client.toml`.
+The server name should be `bbmcp`. Replace `8080` everywhere if the port is
+changed in `config/bbmcp-client.toml`.
 
 ### Codex
 
@@ -49,7 +62,7 @@ Add this entry to the user TOML file at
 `%USERPROFILE%\.codex\config.toml` on Windows:
 
 ```toml
-[mcp_servers.neomcp]
+[mcp_servers.bbmcp]
 url = "http://localhost:8080/mcp"
 ```
 
@@ -60,7 +73,7 @@ Restart Codex or reload its MCP configuration after editing the file.
 The user-scope command is:
 
 ```text
-claude mcp add --transport http --scope user neomcp http://localhost:8080/mcp
+claude mcp add --transport http --scope user bbmcp http://localhost:8080/mcp
 ```
 
 On Windows, the user configuration is normally stored in
@@ -72,7 +85,7 @@ On Windows, the user configuration is normally stored in
 Use the Copilot CLI command:
 
 ```text
-copilot mcp add --transport http neomcp http://localhost:8080/mcp
+copilot mcp add --transport http bbmcp http://localhost:8080/mcp
 ```
 
 The Windows user configuration is normally
@@ -81,7 +94,7 @@ The Windows user configuration is normally
 ```json
 {
   "mcpServers": {
-    "neomcp": {
+    "bbmcp": {
       "type": "http",
       "url": "http://localhost:8080/mcp",
       "tools": ["*"]
@@ -90,7 +103,7 @@ The Windows user configuration is normally
 }
 ```
 
-Merge the `neomcp` property into an existing `mcpServers` object instead of
+Merge the `bbmcp` property into an existing `mcpServers` object instead of
 replacing other servers.
 
 ### GitHub Copilot in VS Code
@@ -101,7 +114,7 @@ Add the server to the user MCP file at
 ```json
 {
   "servers": {
-    "neomcp": {
+    "bbmcp": {
       "type": "http",
       "url": "http://localhost:8080/mcp"
     }
@@ -120,7 +133,7 @@ The installed Agy configuration format uses
 ```json
 {
   "mcpServers": {
-    "neomcp": {
+    "bbmcp": {
       "disabled": false,
       "serverUrl": "http://localhost:8080/mcp"
     }
@@ -151,9 +164,9 @@ configuration until the command's origin has been checked.
 
 Test connectivity from the agent's environment. If Minecraft runs on Windows
 and a native WSL process cannot reach `localhost`, use the Windows-host
-connectivity instructions for that WSL networking mode; do not change NeoMCP
+connectivity instructions for that WSL networking mode; do not change BBMCP
 to bind a public interface. A remote bind would require authentication that
-NeoMCP does not provide.
+BBMCP does not provide.
 
 ## Optional integrations
 

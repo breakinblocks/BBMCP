@@ -8,14 +8,14 @@ MCP client
     ▼
 McpHttpServer
     │ JSON-RPC dispatch and tool validation
-    ├── McpToolExecutor ──► NeoMcpClient ──► Minecraft client thread
+    ├── McpToolExecutor ──► BbmcpClient ──► Minecraft client thread
     ├── integrated-server actions ─────────► Minecraft server thread
     ├── ClientActionController ────────────► bounded input/look actions
     ├── RecipeViewerAdapterRegistry ───────► vanilla catalog or JEI adapter
     └── McpDynamicToolRegistry ◄──────────── KubeJS reload event
 ```
 
-`NeoMcpClient` is the client-side entry point. During client setup it installs
+`BbmcpClient` is the client-side entry point. During client setup it installs
 the thread bridges, captures a small atomic snapshot for the KubeJS bridge on
 client ticks, and starts `McpHttpServer`. During shutdown it closes the HTTP
 listener and clears the optional client context.
@@ -31,7 +31,7 @@ FTB Quests, and KubeJS implementation details.
 
 ## MCP transport
 
-NeoMCP currently supports the MCP JSON-RPC methods needed by the tool clients:
+BBMCP currently supports the MCP JSON-RPC methods needed by the tool clients:
 
 - `initialize`
 - `notifications/initialized`

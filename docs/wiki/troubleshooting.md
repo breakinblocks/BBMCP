@@ -2,8 +2,8 @@
 
 ## The endpoint does not connect
 
-Confirm that Minecraft is running and that NeoMCP reached client setup. Then
-check the configured port in `config/neomcp-client.toml` and test it from the
+Confirm that Minecraft is running and that BBMCP reached client setup. Then
+check the configured port in `config/bbmcp-client.toml` and test it from the
 same environment as the agent.
 
 On Windows:
@@ -13,7 +13,7 @@ Test-NetConnection localhost -Port 8080
 ```
 
 If the port is occupied, change `port`, update the agent URL, and restart
-Minecraft. NeoMCP binds only to `127.0.0.1`; it does not accept connections
+Minecraft. BBMCP binds only to `127.0.0.1`; it does not accept connections
 from another machine.
 
 ## The agent sees no tools
@@ -50,7 +50,7 @@ result from `get_chapter_layout` with the exported image and inspect the log.
 ## KubeJS tools fail
 
 Confirm that `kubejs` appears in `list_mods`. The injected script is written to
-`kubejs/server_scripts/neomcp_injected.js`, and `/reload` errors are visible in
+`kubejs/server_scripts/bbmcp_injected.js`, and `/reload` errors are visible in
 `logs/latest.log` and KubeJS's logs. A registration callback must return a
 JSON-compatible value and must guard optional `serverPlayer` and `minecraft`
 context values.
@@ -63,7 +63,7 @@ stream can simply call `tools/list` again.
 
 Minecraft operations are scheduled on the client or integrated-server thread.
 If the game is frozen, a screen is blocking the operation, or a reload is
-taking longer than `actionTimeoutSeconds`, NeoMCP reports a timeout rather than
+taking longer than `actionTimeoutSeconds`, BBMCP reports a timeout rather than
 replaying the action. Inspect the final lines from `read_latest_logs` and
 increase the timeout only when the operation is known to be safe.
 

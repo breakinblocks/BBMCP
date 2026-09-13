@@ -24,7 +24,7 @@ return an MCP `image` content block.
   "count": 2,
   "mods": [
     { "id": "minecraft", "name": "Minecraft", "version": "1.21.1" },
-    { "id": "neomcp", "name": "NeoMCP", "version": "0.1.0" }
+    { "id": "bbmcp", "name": "BBMCP", "version": "0.1.0" }
   ]
 }
 ```
@@ -51,7 +51,7 @@ resources and require a local single-player world.
 | `inject_kubejs_script` | `{ "script": string }` | KubeJS loaded and connected to a world. |
 
 The script is written to the fixed file
-`kubejs/server_scripts/neomcp_injected.js`, then the client sends `/reload`.
+`kubejs/server_scripts/bbmcp_injected.js`, then the client sends `/reload`.
 The tool is privileged and can be disabled in configuration.
 
 ## FTB Quests
@@ -129,8 +129,8 @@ include `saved_to_file`, `file_path`, `file_format`, and `file_size_bytes`.
 Generated filenames are UUID-based. `dump_recipes` uses `dumps/recipes/`; the
 three analysis tools use `dumps/analysis/`.
 
-Set `save_png: true` when a durable image is needed for a report. NeoMCP
-generates a `neomcp_recipe_<uuid>.png` filename under the active instance's
+Set `save_png: true` when a durable image is needed for a report. BBMCP
+generates a `bbmcp_recipe_<uuid>.png` filename under the active instance's
 `screenshots/` directory and returns `saved_to_screenshots` plus
 `screenshot_path`. Callers cannot provide an arbitrary output path.
 

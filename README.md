@@ -1,6 +1,6 @@
-# NeoMCP
+# BBMCP
 
-NeoMCP is an internal development tool for NeoForge 1.21.1. It embeds a
+BBMCP is an internal development tool for NeoForge 1.21.1. It embeds a
 localhost HTTP server in the Minecraft client JVM and exposes game-state
 inspection, command execution, screenshots, and FTB Quests tooling through
 MCP JSON-RPC.
@@ -8,15 +8,15 @@ MCP JSON-RPC.
 This project is intended for local development and automation. It is not an
 internet-facing server and currently has no authentication layer.
 
-The maintained technical documentation is in the [NeoMCP wiki](docs/wiki/README.md).
+The maintained technical documentation is in the [BBMCP wiki](docs/wiki/README.md).
 The [CurseForge description](docs/curseforge-description.md) contains a
 publish-ready overview, installation steps, and a short usage guide.
 
 ## Project metadata
 
-- Mod name: `NeoMCP`
-- Mod ID: `neomcp`
-- Package: `com.breakinblocks.neomcp`
+- Mod name: `BBMCP`
+- Mod ID: `bbmcp`
+- Package: `com.breakinblocks.bbmcp`
 - Author: Tazz
 - Minecraft: `1.21.1`
 - NeoForge: `21.1.173` or newer in the `21.1.x` line
@@ -38,7 +38,7 @@ publish-ready overview, installation steps, and a short usage guide.
 FTB Quests is included as a development runtime dependency from the FTB Maven
 repository. The mod remains loadable without FTB Quests in other environments.
 KubeJS 2101.7.1-build.181 is also included only for the development runtime;
-the published NeoMCP dependency is optional.
+the published BBMCP dependency is optional.
 
 ## Build and run
 
@@ -54,21 +54,21 @@ single-player save named `New World`, making the client ready for in-world
 tools during development. Change the quick-play arguments in `build.gradle`
 when a different test save is required.
 
-When the client is running, NeoMCP listens on the default port:
+When the client is running, BBMCP listens on the default port:
 
 ```text
 http://localhost:8080/mcp
 ```
 
 The port and request/resource limits are configurable in
-`config/neomcp-client.toml`; see [Configuration](docs/wiki/configuration.md).
+`config/bbmcp-client.toml`; see [Configuration](docs/wiki/configuration.md).
 The server always binds to loopback (`127.0.0.1`) and accepts `POST` requests
 with the `application/json` content type. It implements MCP JSON-RPC 2.0 with
 protocol version `2024-11-05`.
 
 ## MCP client configuration
 
-Register the server as an HTTP MCP server named `neomcp`:
+Register the server as an HTTP MCP server named `bbmcp`:
 
 ```text
 http://localhost:8080/mcp
@@ -159,13 +159,13 @@ registry-aware `LootTable.DIRECT_CODEC` for JSON serialization.
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
-| `inject_kubejs_script` | `{ "script": string }` | Writes `kubejs/server_scripts/neomcp_injected.js` and dispatches `/reload`. Requires KubeJS to be loaded. |
+| `inject_kubejs_script` | `{ "script": string }` | Writes `kubejs/server_scripts/bbmcp_injected.js` and dispatches `/reload`. Requires KubeJS to be loaded. |
 
-When KubeJS is loaded, NeoMCP registers the `NeoMcpEvents.register` server
+When KubeJS is loaded, BBMCP registers the `BbmcpEvents.register` server
 event. Register pack-specific MCP tools during the event:
 
 ```js
-NeoMcpEvents.register(event => {
+BbmcpEvents.register(event => {
   event.registerTool(
     'current_dimension',
     'Return the active server dimension.',
@@ -181,7 +181,7 @@ NeoMcpEvents.register(event => {
 
 The callback receives a context containing the current `server`, `level`, and
 JSON `arguments`. It also exposes `serverPlayer` for the local integrated-server
-player and `minecraft` for the local client instance when NeoMCP is running in
+player and `minecraft` for the local client instance when BBMCP is running in
 an integrated client. The callback runs on the Minecraft server thread. Use
 `context.isServerPlayerAvailable()` and `context.isMinecraftAvailable()` before
 accessing those optional client-side values; `serverPlayer` is unavailable on a
@@ -224,7 +224,7 @@ and player inventory UI. With `save_png: true`, the file is written to a path
 similar to:
 
 ```text
-run/screenshots/neomcp_chapter_<chapter-id>_<uuid>.png
+run/screenshots/bbmcp_chapter_<chapter-id>_<uuid>.png
 ```
 
 All FTB Quests tools check that `ftbquests` is loaded before accessing its
@@ -250,7 +250,7 @@ client API.
 
 `look_at` and `move` are asynchronous client-tick actions. They return an
 action ID and are bounded by `maxActionTicks`; starting another action
-cancels the previous one. These are primitive inputs only: NeoMCP does not
+cancels the previous one. These are primitive inputs only: BBMCP does not
 provide collision-aware navigation, pathfinding, mouse automation, or
 Baritone support. See [Movement and compatibility](docs/wiki/movement-and-compatibility.md).
 
@@ -281,15 +281,15 @@ behalf. See [Recipe viewers and recipe graph](docs/wiki/recipes.md).
 
 ## Architecture
 
-- `NeoMcpClient` owns the client-thread bridge and game-state operations.
+- `BbmcpClient` owns the client-thread bridge and game-state operations.
 - `McpHttpServer` provides loopback HTTP transport and MCP JSON-RPC dispatch.
 - `McpDynamicToolRegistry` publishes KubeJS tools atomically between reloads.
 - `McpToolExecutor` defines the extensible tool boundary.
 - `ClientActionController` owns bounded client-tick look, movement, jump, and
   interaction actions.
-- `com.breakinblocks.neomcp.recipe` contains the viewer-neutral recipe catalog,
+- `com.breakinblocks.bbmcp.recipe` contains the viewer-neutral recipe catalog,
   graph operations, optional JEI adapter, and future viewer boundary.
-- `com.breakinblocks.neomcp.kubejs` contains the optional KubeJS plugin, event,
+- `com.breakinblocks.bbmcp.kubejs` contains the optional KubeJS plugin, event,
   and Rhino callback bridge.
 - `FtbQuestsIntegration` isolates optional FTB Quests GUI, layout, and canvas
   rendering code.
