@@ -11,8 +11,9 @@ automation, and coding agents that need live access to a development instance.
 - [Configuration](configuration.md)
 - [Architecture and request lifecycle](architecture.md)
 - [Tool reference](tools.md)
+- [Recipe viewers and recipe graph](recipes.md)
 - [KubeJS bridge](kubejs.md)
-- [Movement and compatibility roadmap](movement-and-compatibility.md)
+- [Movement and compatibility](movement-and-compatibility.md)
 - [Troubleshooting](troubleshooting.md)
 
 The [Phase 0 configuration audit](../phase0-global-mcp-configuration.md)

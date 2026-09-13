@@ -82,6 +82,43 @@ When a `Screen` is active, the main framebuffer capture includes the rendered
 UI overlay. The chapter canvas export is separate: it renders only the FTB
 Quests chapter canvas and intentionally excludes normal surrounding UI.
 
+## Client actions
+
+| Tool | Arguments | Availability |
+| --- | --- | --- |
+| `look_at` | `{ "x": number, "y": number, "z": number, "duration_ticks": int? }` | Active local player; client-tick action. |
+| `jump` | none | Active local player. |
+| `move` | `{ "direction": "forward" \| "backward" \| "left" \| "right", "duration_ticks": int }` | Active local player; bounded key hold. |
+| `interact` | `{ "target": "looked_at" \| "air", "hand": "main_hand" \| "off_hand"? }` | Active local player and client game mode. |
+| `get_action_status` | `{ "action_id": int }` | Previously accepted action. |
+| `cancel_action` | `{ "action_id": int }` | Currently running action. |
+
+`look_at` and `move` return an action ID and advance on client ticks. The
+maximum duration is `maxActionTicks`. There is no collision-aware navigation,
+pathfinding, mouse automation, or Baritone integration.
+
+## Recipes and viewers
+
+| Tool | Arguments | Availability |
+| --- | --- | --- |
+| `recipe_capabilities` | none | Client JVM; reports canonical recipe and optional viewer state. |
+| `find_recipes` | `{ "query": string?, "recipe_type": string?, "limit": int? }` | Connected client recipe manager. |
+| `get_recipe` | `{ "recipe_id": string }` | Connected client and exact synchronized recipe. |
+| `view_recipe` | `{ "recipe_id": string, "viewer": string?, "mode": "recipe" \| "uses"? }` | JEI 19.x runtime for the current implementation. |
+| `get_recipe_tree` | `{ "item_id": string, "max_depth": int? }` | Connected client; JEI adds workstation data when active. |
+| `get_item_usages` | `{ "item_id": string }` | Connected client; JEI adds category/catalyst matches when active. |
+| `get_workstation_recipes` | `{ "machine_id": string }` | JEI 19.x runtime and a catalyst item. |
+| `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Connected client; depth is capped at 5. |
+| `capture_recipe_card` | `{ "recipe_id": string }` | JEI 19.x runtime and render thread. |
+
+Canonical recipe data comes from the synchronized vanilla `RecipeManager`.
+The JEI adapter uses `IRecipeManager` lookups, focus roles, catalyst
+lookups, `IRecipesGui`, and `IRecipeLayoutDrawable`. `capture_recipe_card`
+renders the card into an off-screen framebuffer and returns `image/png`
+content; it does not capture the surrounding JEI sidebar. EMI and REI are
+reported when detected, but their adapters are not implemented yet. See
+[Recipe viewers and recipe graph](recipes.md).
+
 ## Dynamic KubeJS tools
 
 Tools registered by KubeJS appear beside the built-in tools in `tools/list`.

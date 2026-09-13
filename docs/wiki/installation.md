@@ -8,7 +8,9 @@ For a packaged installation:
 
 1. Install a NeoForge 1.21.1 client instance.
 2. Put the NeoMCP jar in that instance's `mods` directory.
-3. Optionally install FTB Quests and/or KubeJS to enable their integrations.
+3. Optionally install FTB Quests, KubeJS, and JEI to enable their
+   integrations. JEI is required for viewer GUI, catalyst, and recipe-card
+   operations; the canonical recipe tools do not require a viewer.
 4. Launch the client and enter a single-player world.
 
 For this repository's development instance:
@@ -160,5 +162,8 @@ FTB Quests and KubeJS are optional dependencies. Their absence is expected:
 - Without FTB Quests, the FTB GUI, layout, and canvas tools are omitted or
   return a clear unavailable error.
 - Without KubeJS, script injection and dynamic KubeJS tools are unavailable.
+- Without JEI, synchronized vanilla recipe search, exact recipe data, recipe
+  trees, usages, and loop scans remain available; JEI GUI/catalyst/card tools
+  are unavailable. EMI and REI are currently discovery-only.
 - `list_mods` reports the exact loaded mod set so an agent can discover which
   compatibility paths are relevant before calling an optional tool.

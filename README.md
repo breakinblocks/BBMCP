@@ -31,6 +31,9 @@ publish-ready overview, installation steps, and a short usage guide.
   loaded.
 - KubeJS is optional. `inject_kubejs_script` fails clearly when KubeJS is not
   loaded.
+- JEI is optional. The recipe catalog works from the synchronized vanilla
+  recipe manager; JEI adds viewer categories, catalysts, GUI opening, and
+  recipe-card rendering.
 
 FTB Quests is included as a development runtime dependency from the FTB Maven
 repository. The mod remains loadable without FTB Quests in other environments.
@@ -234,12 +237,54 @@ client API.
 | `take_screenshot` | none | Captures the main framebuffer to `screenshots/` and reports the path. An active `Screen` UI overlay is included. |
 | `update_take_screenshot` | none | Alias of `take_screenshot` with the same UI-inclusive behavior. |
 
+### Client actions
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `look_at` | `{ "x": number, "y": number, "z": number, "duration_ticks": int? }` | Turns the local player toward a position with shortest-path yaw wrapping and linear yaw/pitch interpolation. |
+| `jump` | none | Performs one client-side jump. |
+| `move` | `{ "direction": "forward" \| "backward" \| "left" \| "right", "duration_ticks": int }` | Holds one vanilla movement key for a bounded duration. |
+| `interact` | `{ "target": "looked_at" \| "air", "hand": "main_hand" \| "off_hand"? }` | Uses a hand on the current crosshair target or in air. |
+| `get_action_status` | `{ "action_id": int }` | Reports an action's state and elapsed ticks. |
+| `cancel_action` | `{ "action_id": int }` | Cancels the active action and releases movement input. |
+
+`look_at` and `move` are asynchronous client-tick actions. They return an
+action ID and are bounded by `maxActionTicks`; starting another action
+cancels the previous one. These are primitive inputs only: NeoMCP does not
+provide collision-aware navigation, pathfinding, mouse automation, or
+Baritone support. See [Movement and compatibility](docs/wiki/movement-and-compatibility.md).
+
+### Recipes and viewers
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `recipe_capabilities` | none | Reports synchronized recipe access and detected JEI/EMI/REI viewers. |
+| `find_recipes` | `{ "query": string?, "recipe_type": string?, "limit": int? }` | Searches the client recipe manager. |
+| `get_recipe` | `{ "recipe_id": string }` | Returns one exact synchronized recipe. |
+| `view_recipe` | `{ "recipe_id": string, "viewer": "auto" \| "jei" \| "emi" \| "rei"?, "mode": "recipe" \| "uses"? }` | Opens a recipe in an implemented optional viewer adapter. |
+| `get_recipe_tree` | `{ "item_id": string, "max_depth": int? }` | Returns a bounded reverse crafting tree with ingredient slots, result amounts, and workstation metadata. |
+| `get_item_usages` | `{ "item_id": string }` | Returns recipes/categories where the item is an ingredient or catalyst. |
+| `get_workstation_recipes` | `{ "machine_id": string }` | Returns JEI recipes associated with a machine/workstation catalyst. |
+| `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Finds potential circular recipe dependencies, capped at depth 5. |
+| `capture_recipe_card` | `{ "recipe_id": string }` | Returns one JEI recipe card as an off-screen `image/png` MCP content block. |
+
+The canonical recipe tools work without a viewer. JEI 19.x is the first
+viewer adapter and is compile-only in this project; install JEI in the
+runtime instance to enable GUI/catalyst/card features. EMI and REI are
+detected for future drop-in adapters but are not implemented yet. Recipe
+tools are read-only and do not transfer items or craft on the player's
+behalf. See [Recipe viewers and recipe graph](docs/wiki/recipes.md).
+
 ## Architecture
 
 - `NeoMcpClient` owns the client-thread bridge and game-state operations.
 - `McpHttpServer` provides loopback HTTP transport and MCP JSON-RPC dispatch.
 - `McpDynamicToolRegistry` publishes KubeJS tools atomically between reloads.
 - `McpToolExecutor` defines the extensible tool boundary.
+- `ClientActionController` owns bounded client-tick look, movement, jump, and
+  interaction actions.
+- `com.breakinblocks.neomcp.recipe` contains the viewer-neutral recipe catalog,
+  graph operations, optional JEI adapter, and future viewer boundary.
 - `com.breakinblocks.neomcp.kubejs` contains the optional KubeJS plugin, event,
   and Rhino callback bridge.
 - `FtbQuestsIntegration` isolates optional FTB Quests GUI, layout, and canvas
@@ -260,15 +305,11 @@ Useful validation commands:
 .\gradlew.bat build
 ```
 
-The development client must be in a world for player, entity, FTB Quests, and
-command tools to succeed. The automatic `New World` quick-play configuration
-is provided for this purpose.
-
-NeoMCP does not yet simulate physical player navigation. The supported way to
-move a player during development is `execute_command` with a server command
-such as `/tp` (sent without the slash). The planned navigation API and
-optional Baritone/FTB/recipe-mod compatibility strategy are documented in the
-[movement and compatibility roadmap](docs/wiki/movement-and-compatibility.md).
+The development client must be in a world for player, entity, action, recipe,
+FTB Quests, and command tools to succeed. The automatic `New World` quick-play
+configuration is provided for this purpose. Use `execute_command` with a
+server command such as `tp @s 100 70 -20` for deterministic teleport setup;
+primitive movement is not a pathfinder.
 
 Do not expose the configured port beyond the local machine. The server is an internal
 developer endpoint and is intentionally not designed for hostile network

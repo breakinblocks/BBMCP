@@ -1,90 +1,58 @@
-# Movement and compatibility roadmap
+# Movement and compatibility
 
-## What movement can do today?
+## Primitive client actions
 
-NeoMCP does not currently simulate physical keyboard or mouse movement. An
-agent can still move a development player with `execute_command`, for example
-by sending `tp @s 100 70 -20` without the leading slash. This is useful for
-test setup, but it is teleportation rather than navigation: it does not test
-collision, pathfinding, doors, jumps, hazards, or player input.
+NeoMCP provides bounded client-tick actions for test automation. These are
+input primitives, not a navigation system:
 
-There are several possible levels of movement support:
-
-| Approach | Strength | Limitation |
+| Tool | Arguments | Behavior |
 | --- | --- | --- |
-| Server commands such as `tp` | Exact and simple for test setup. | Bypasses the route and normal player controls. |
-| Raw key/mouse simulation | Exercises client input. | Fragile, timing-sensitive, and unaware of obstacles. |
-| High-level actions (`look_at`, `jump`, `interact`) | Useful building blocks for QA. | Needs a client-tick state machine and careful stop conditions. |
-| Pathfinding (`navigate_to`) | Can travel to a target while respecting terrain. | Requires a pathfinder, chunk/claim policy, and asynchronous job control. |
-| Optional pathfinder integration | Reuses a mature navigation implementation. | Must remain optional and version-compatible with the pack. |
+| `look_at` | `{ "x": number, "y": number, "z": number, "duration_ticks": int? }` | Turns the local player toward a world position. Yaw and pitch are linearly interpolated over the requested ticks. |
+| `jump` | none | Invokes one local-player jump on the client thread. |
+| `move` | `{ "direction": "forward" \| "backward" \| "left" \| "right", "duration_ticks": int }` | Holds one vanilla movement key for a bounded number of client ticks. |
+| `interact` | `{ "target": "looked_at" \| "air", "hand": "main_hand" \| "off_hand"? }` | Uses the selected hand on the current crosshair target or in the air. |
+| `get_action_status` | `{ "action_id": int }` | Reads the status and elapsed ticks of an accepted asynchronous action. |
+| `cancel_action` | `{ "action_id": int }` | Cancels the currently running action and releases any held movement key. |
 
-## Recommended navigation design
+`look_at` and `move` return an action ID immediately. The controller owns the
+action state machine and advances it on client ticks. Starting another
+action cancels the previous one. A movement action also stops if the player
+disappears or a screen opens. All durations are bounded by `maxActionTicks`.
 
-The safest useful API is an asynchronous navigation job rather than a blocking
-HTTP request:
+`look_at` uses the shortest wrapped yaw path, so a turn across the -180/180
+boundary does not rotate almost a full circle. Pitch is clamped to the valid
+player range. Coordinates must be finite and the action requires a connected
+local player.
 
-```text
-navigate_to(target) ──► job id
-       │
-       ├── get_navigation_status(job id)
-       └── cancel_navigation(job id)
-```
+## What is intentionally not included
 
-An implementation should run from client ticks and stop when the player dies,
-disconnects, opens a blocking screen, changes dimension, reaches the target,
-or encounters a pathing failure. It should report the target dimension,
-current position, distance remaining, current action, and failure reason. It
-must never block the HTTP worker while waiting for a route or movement.
+There is no `navigate_to`, collision-aware pathfinding, obstacle avoidance,
+mouse automation, attack automation, or Baritone integration. Primitive
+movement cannot understand doors, claims, hazards, or a target's route. Use
+`execute_command` for deterministic setup such as teleporting a test player.
 
-The first navigation compatibility target should be a compatible Baritone
-installation when one is present. NeoMCP should detect it through `list_mods`
-and load an optional adapter, rather than adding Baritone as a required
-dependency. A built-in fallback pathfinder can be considered later if the
-target modpacks do not share a stable navigation library.
+This boundary is deliberate: a future navigation adapter would need its own
+versioned pathfinding API, chunk-loading policy, claim policy, cancellation
+semantics, and safety limits. Baritone support is not planned for the current
+NeoMCP scope.
 
-## Compatibility priorities
+## Recipe viewer compatibility
 
-NeoMCP should prefer small capability adapters over hard-coding every mod in
-the base tool executor. `list_mods` is the discovery primitive that lets an
-agent choose the adapters actually available in a pack.
+Recipe access follows the same adapter boundary. The canonical source is the
+client-synchronised vanilla `RecipeManager`, so recipe search, exact recipe
+serialization, bounded recipe trees, and loop scans work without a viewer.
+JEI 19.x is an optional client adapter for category/catalyst lookups, opening
+recipe screens, and off-screen recipe-card rendering. EMI and REI are detected
+by `recipe_capabilities` so they can receive adapters later, but are not
+implemented in this release.
 
-### Highest-value candidates
+See [Recipe viewers and recipe graph](recipes.md) for schemas and the exact
+optional dependency behavior.
 
-1. **Baritone** — pathfinding and movement jobs. This is the most direct way to
-   support “navigate to this block/entity” without writing a second pathfinder.
-2. **FTB Teams and FTB Chunks** — team identity, claims, and protected areas.
-   Navigation and interaction tools should be claim-aware where those mods
-   are installed.
-3. **JEI, EMI, or REI** — item, recipe, and usage lookup. An adapter should be
-   selected for the recipe viewer present instead of depending on all three.
-4. **Jade or WTHIT** — server-authoritative block/entity details when the pack
-   uses a display provider that contains information not available from the
-   base inspection tools.
-5. **KubeJS** — already supported as the extensibility layer for pack-specific
-   mechanics and custom tools.
+## Other compatibility priorities
 
-FTB Quests remains the strongest QA-specific integration because it provides a
-structured progression graph and a visual canvas. FTB Library is useful as a
-shared dependency in the FTB ecosystem, but it does not by itself need a
-large user-facing tool surface.
-
-### Add only when a workflow needs it
-
-Create, Applied Energistics 2, Refined Storage, Sophisticated Backpacks, and
-similar content mods are valuable targets for focused adapters such as
-machine state, network contents, or storage inspection. They should be added
-after a concrete test workflow is identified; broad compatibility code would
-increase version coupling without improving every development session.
-
-## Suggested future tool families
-
-- `get_capabilities`: report optional integrations and their supported actions.
-- `navigate_to`, `get_navigation_status`, and `cancel_navigation`.
-- `look_at`, `interact`, and `attack` as explicit, bounded client actions.
-- `find_blocks` and `find_entities` with bounded searches.
-- `get_recipe` / `get_item_usage` through the installed recipe-viewer adapter.
-- claim-aware `can_interact` checks before movement or block actions.
-
-Every action tool should have explicit world/client preconditions and a
-bounded timeout. Read-only inspection and capability discovery should remain
-usable even when no world is loaded.
+`list_mods` is the discovery primitive for pack-specific compatibility. FTB
+Quests and KubeJS are already isolated integrations. Further adapters should
+be added only for a concrete workflow—for example Jade/WTHIT for richer
+inspection or Create/Applied Energistics 2/Refined Storage for focused machine
+or network state—not as required dependencies of the base mod.

@@ -10,6 +10,8 @@ McpHttpServer
     │ JSON-RPC dispatch and tool validation
     ├── McpToolExecutor ──► NeoMcpClient ──► Minecraft client thread
     ├── integrated-server actions ─────────► Minecraft server thread
+    ├── ClientActionController ────────────► bounded input/look actions
+    ├── RecipeViewerAdapterRegistry ───────► vanilla catalog or JEI adapter
     └── McpDynamicToolRegistry ◄──────────── KubeJS reload event
 ```
 
@@ -85,6 +87,12 @@ Optional APIs are isolated behind explicit loaded-mod checks:
   `ftbquests` is loaded.
 - KubeJS registration is discovered through `kubejs.plugins.txt` and is only
   active when KubeJS is present.
+- Recipe data always starts from the client-synchronised vanilla
+  `RecipeManager`. The optional JEI 19.x plugin is loaded through
+  `RecipeViewerAdapterRegistry` only after JEI reports a live runtime; its
+  direct API classes are kept out of the ordinary no-JEI path.
+- EMI and REI are detected for capability reporting, but their adapters are
+  not implemented yet. Requests for those viewers fail explicitly.
 - Loot-table tools require an active integrated server, even though the HTTP
   listener itself lives on the client.
 

@@ -24,6 +24,12 @@ settings.
 | `sseQueueCapacity` | `32` | Pending notifications per event stream. |
 | `sseHeartbeatSeconds` | `15` | Keep-alive interval for idle event streams. |
 | `actionTimeoutSeconds` | `5` | Time allowed for a queued client, server, or KubeJS action. |
+| `maxActionTicks` | `200` | Maximum duration accepted by primitive `look_at` and `move` actions. |
+| `maxRecipeResults` | `1000` | Maximum recipes returned by `find_recipes`. |
+| `maxRecipeTreeDepth` | `5` | Maximum depth accepted by `get_recipe_tree` and loop scans. |
+| `maxRecipeGraphNodes` | `5000` | Maximum recipe graph expansion work units per tree or loop scan. |
+| `recipeCardWidth` | `320` | Width in pixels of the off-screen `capture_recipe_card` framebuffer. |
+| `recipeCardHeight` | `180` | Height in pixels of the off-screen `capture_recipe_card` framebuffer. |
 | `maxNearbyEntityRadius` | `512.0` | Maximum radius accepted by `get_nearby_entities`. |
 | `maxLogLines` | `100` | Number of final lines returned by `read_latest_logs`. |
 | `maxCommandLength` | `32768` | Maximum `execute_command` string length. |
