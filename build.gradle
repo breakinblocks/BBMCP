@@ -93,8 +93,8 @@ repositories {
 
 dependencies {
     compileOnly 'mezz.jei:jei-1.21.1-neoforge-api:19.25.0.322'
-    compileOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.0'
-    runtimeOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.0'
+    compileOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.34'
+    runtimeOnly 'dev.ftb.mods:ftb-quests-neoforge:2101.1.34'
     compileOnly 'dev.latvian.mods:kubejs-neoforge:2101.7.1-build.181'
     runtimeOnly 'dev.latvian.mods:kubejs-neoforge:2101.7.1-build.181'
 }
