@@ -4,6 +4,7 @@ import com.breakinblocks.neomcp.mcp.McpHttpServer;
 import com.breakinblocks.neomcp.mcp.McpNbtJson;
 import com.breakinblocks.neomcp.mcp.McpToolExecutor;
 import com.breakinblocks.neomcp.ftbquests.FtbQuestsIntegration;
+import com.breakinblocks.neomcp.kubejs.NeoMcpClientBridge;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
@@ -28,6 +29,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -41,6 +43,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.io.BufferedReader;
 import java.util.ArrayDeque;
@@ -61,34 +65,74 @@ import java.util.UUID;
 public final class NeoMcpClient {
     private static final long CLIENT_ACTION_TIMEOUT_SECONDS = 5;
     private static McpHttpServer server;
+    private static volatile ClientCapture clientCapture;
 
     private NeoMcpClient() {
     }
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
+        NeoForge.EVENT_BUS.addListener(NeoMcpClient::onClientTick);
         event.enqueueWork(NeoMcpClient::startServer);
+    }
+
+    private static void onClientTick(ClientTickEvent.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer localPlayer = minecraft.player;
+        clientCapture = new ClientCapture(
+                minecraft,
+                minecraft.getSingleplayerServer(),
+                localPlayer == null ? null : localPlayer.getUUID());
     }
 
     private static void startServer() {
         if (server != null) {
             throw new IllegalStateException("NeoMCP HTTP server is already running");
         }
+        NeoMcpClientBridge.install(NeoMcpClient::captureKubejsClientContext);
         McpHttpServer newServer = new McpHttpServer(new MinecraftToolExecutor());
         try {
             newServer.start();
             server = newServer;
         } catch (java.io.IOException | RuntimeException exception) {
             newServer.close();
+            NeoMcpClientBridge.clear();
             throw new IllegalStateException("Unable to start NeoMCP HTTP server on localhost:8080", exception);
         }
     }
 
     static void stopServer() {
-        if (server != null) {
-            server.close();
-            server = null;
+        try {
+            if (server != null) {
+                server.close();
+                server = null;
+            }
+        } finally {
+            NeoMcpClientBridge.clear();
+            clientCapture = null;
         }
+    }
+
+    private static NeoMcpClientBridge.ClientValues captureKubejsClientContext(
+            MinecraftServer server) throws Exception {
+        if (!server.isSameThread()) {
+            throw new IllegalStateException("KubeJS client context must be captured on the server thread");
+        }
+
+        ClientCapture capture = clientCapture;
+        if (capture == null || capture.minecraft() == null) {
+            return new NeoMcpClientBridge.ClientValues(null, null);
+        }
+        if (capture.integratedServer() != server) {
+            throw new IllegalStateException(
+                    "The local Minecraft client is not connected to the active integrated server");
+        }
+        if (capture.playerId() == null) {
+            return new NeoMcpClientBridge.ClientValues(null, capture.minecraft());
+        }
+
+        ServerPlayer serverPlayer = server.getPlayerList().getPlayer(capture.playerId());
+        return new NeoMcpClientBridge.ClientValues(serverPlayer, capture.minecraft());
     }
 
     private static final class MinecraftToolExecutor implements McpToolExecutor {
@@ -601,39 +645,6 @@ public final class NeoMcpClient {
             });
         }
 
-        private <T> T callOnClientThread(ClientAction<T> action) throws Exception {
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.isSameThread()) {
-                return action.call();
-            }
-            AtomicReference<ClientActionState> state = new AtomicReference<>(ClientActionState.QUEUED);
-            CompletableFuture<T> result = new CompletableFuture<>();
-            minecraft.execute(() -> {
-                if (!state.compareAndSet(ClientActionState.QUEUED, ClientActionState.RUNNING)) {
-                    return;
-                }
-                try {
-                    result.complete(action.call());
-                } catch (Exception exception) {
-                    result.completeExceptionally(exception);
-                } finally {
-                    state.set(ClientActionState.COMPLETED);
-                }
-            });
-            try {
-                return result.get(CLIENT_ACTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            } catch (InterruptedException exception) {
-                state.compareAndSet(ClientActionState.QUEUED, ClientActionState.CANCELLED);
-                Thread.currentThread().interrupt();
-                throw exception;
-            } catch (TimeoutException exception) {
-                if (state.compareAndSet(ClientActionState.QUEUED, ClientActionState.CANCELLED)) {
-                    throw new TimeoutException("Minecraft client action timed out before it started");
-                }
-                throw new TimeoutException("Minecraft client action timed out after it started; outcome is unknown");
-            }
-        }
-
         private <T> T callOnServerThread(MinecraftServer server, ServerAction<T> action) throws Exception {
             if (server.isSameThread()) {
                 return action.call();
@@ -665,6 +676,45 @@ public final class NeoMcpClient {
                 throw new TimeoutException("Minecraft server action timed out after it started; outcome is unknown");
             }
         }
+    }
+
+    private static <T> T callOnClientThread(ClientAction<T> action) throws Exception {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.isSameThread()) {
+            return action.call();
+        }
+        AtomicReference<ClientActionState> state = new AtomicReference<>(ClientActionState.QUEUED);
+        CompletableFuture<T> result = new CompletableFuture<>();
+        minecraft.execute(() -> {
+            if (!state.compareAndSet(ClientActionState.QUEUED, ClientActionState.RUNNING)) {
+                return;
+            }
+            try {
+                result.complete(action.call());
+            } catch (Exception exception) {
+                result.completeExceptionally(exception);
+            } finally {
+                state.set(ClientActionState.COMPLETED);
+            }
+        });
+        try {
+            return result.get(CLIENT_ACTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            state.compareAndSet(ClientActionState.QUEUED, ClientActionState.CANCELLED);
+            Thread.currentThread().interrupt();
+            throw exception;
+        } catch (TimeoutException exception) {
+            if (state.compareAndSet(ClientActionState.QUEUED, ClientActionState.CANCELLED)) {
+                throw new TimeoutException("Minecraft client action timed out before it started");
+            }
+            throw new TimeoutException("Minecraft client action timed out after it started; outcome is unknown");
+        }
+    }
+
+    private record ClientCapture(
+            Object minecraft,
+            MinecraftServer integratedServer,
+            UUID playerId) {
     }
 
     private enum ClientActionState {

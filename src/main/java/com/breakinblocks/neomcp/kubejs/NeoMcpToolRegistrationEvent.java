@@ -139,18 +139,24 @@ public final class NeoMcpToolRegistrationEvent extends ServerKubeEvent {
             MinecraftServer server,
             Function callback,
             Scriptable scope,
-            JsonObject arguments) {
+            JsonObject arguments) throws Exception {
         ensureInvocationIsCurrent(server);
         ServerLevel level = server.overworld();
         if (level == null) {
             throw new IllegalStateException("The active server has no overworld");
         }
+        NeoMcpClientBridge.ClientValues clientValues = NeoMcpClientBridge.capture(server);
         Context context = contextFactory.enter();
         Object result = context.callSync(
                 callback,
                 scope,
                 scope,
-                new Object[]{new NeoMcpToolContext(server, level, arguments)});
+                new Object[]{new NeoMcpToolContext(
+                        server,
+                        level,
+                        clientValues.serverPlayer(),
+                        clientValues.minecraft(),
+                        arguments)});
         if (result == null || Undefined.isUndefined(result)) {
             throw new IllegalStateException("KubeJS tool callback returned no value");
         }

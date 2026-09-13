@@ -168,9 +168,20 @@ NeoMcpEvents.register(event => {
 ```
 
 The callback receives a context containing the current `server`, `level`, and
-JSON `arguments`. The callback runs on the Minecraft server thread. KubeJS
-tools are rebuilt on every server-script load, including `/reload`; the active
-HTTP server advertises `tools.listChanged` and sends
+JSON `arguments`. It also exposes `serverPlayer` for the local integrated-server
+player and `minecraft` for the local client instance when NeoMCP is running in
+an integrated client. The callback runs on the Minecraft server thread. Use
+`context.isServerPlayerAvailable()` and `context.isMinecraftAvailable()` before
+accessing those optional client-side values; `serverPlayer` is unavailable on a
+dedicated server or when the local player is not connected, while `minecraft`
+is unavailable on a dedicated server. Their getters throw when unavailable.
+`serverPlayer` is safe to use from the callback's server thread. `minecraft` is
+a live client handle and
+client-thread-confined methods must not be called directly from that callback.
+The dimension is derived from `context.level.dimension`.
+
+KubeJS tools are rebuilt on every server-script load, including `/reload`; the
+active HTTP server advertises `tools.listChanged` and sends
 `notifications/tools/list_changed` to connected `text/event-stream` clients.
 
 ### FTB Quests
