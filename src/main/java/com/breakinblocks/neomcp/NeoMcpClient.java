@@ -3,6 +3,7 @@ package com.breakinblocks.neomcp;
 import com.breakinblocks.neomcp.mcp.McpHttpServer;
 import com.breakinblocks.neomcp.mcp.McpNbtJson;
 import com.breakinblocks.neomcp.mcp.McpToolExecutor;
+import com.breakinblocks.neomcp.config.NeoMcpConfig;
 import com.breakinblocks.neomcp.ftbquests.FtbQuestsIntegration;
 import com.breakinblocks.neomcp.kubejs.NeoMcpClientBridge;
 import com.google.gson.JsonArray;
@@ -45,6 +46,7 @@ import net.neoforged.fml.ModList;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforgespi.language.IModInfo;
 
 import java.io.BufferedReader;
 import java.util.ArrayDeque;
@@ -63,7 +65,6 @@ import java.util.UUID;
 
 @EventBusSubscriber(modid = NeoMcp.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class NeoMcpClient {
-    private static final long CLIENT_ACTION_TIMEOUT_SECONDS = 5;
     private static McpHttpServer server;
     private static volatile ClientCapture clientCapture;
 
@@ -86,6 +87,9 @@ public final class NeoMcpClient {
     }
 
     private static void startServer() {
+        if (!NeoMcpConfig.isServerEnabled()) {
+            return;
+        }
         if (server != null) {
             throw new IllegalStateException("NeoMCP HTTP server is already running");
         }
@@ -97,7 +101,9 @@ public final class NeoMcpClient {
         } catch (java.io.IOException | RuntimeException exception) {
             newServer.close();
             NeoMcpClientBridge.clear();
-            throw new IllegalStateException("Unable to start NeoMCP HTTP server on localhost:8080", exception);
+            throw new IllegalStateException(
+                    "Unable to start NeoMCP HTTP server on localhost:" + NeoMcpConfig.port(),
+                    exception);
         }
     }
 
@@ -147,6 +153,27 @@ public final class NeoMcpClient {
                     throw new IllegalStateException("Minecraft client is not connected");
                 }
                 connection.sendCommand(command);
+            });
+        }
+
+        @Override
+        public JsonObject listMods() throws Exception {
+            return callOnClientThread(() -> {
+                List<IModInfo> loadedMods = ModList.get().getMods().stream()
+                        .sorted(Comparator.comparing(IModInfo::getModId))
+                        .toList();
+                JsonArray mods = new JsonArray();
+                for (IModInfo mod : loadedMods) {
+                    JsonObject modData = new JsonObject();
+                    modData.addProperty("id", mod.getModId());
+                    modData.addProperty("name", mod.getDisplayName());
+                    modData.addProperty("version", mod.getVersion().toString());
+                    mods.add(modData);
+                }
+                JsonObject result = new JsonObject();
+                result.addProperty("count", mods.size());
+                result.add("mods", mods);
+                return result;
             });
         }
 
@@ -283,11 +310,12 @@ public final class NeoMcpClient {
                 throw new IllegalStateException("Latest log file is unavailable: " + logPath);
             }
 
-            ArrayDeque<String> lastLines = new ArrayDeque<>(100);
+            int maxLogLines = NeoMcpConfig.maxLogLines();
+            ArrayDeque<String> lastLines = new ArrayDeque<>(maxLogLines);
             try (BufferedReader reader = Files.newBufferedReader(logPath, StandardCharsets.UTF_8)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (lastLines.size() == 100) {
+                    if (lastLines.size() == maxLogLines) {
                         lastLines.removeFirst();
                     }
                     lastLines.addLast(line);
@@ -664,7 +692,7 @@ public final class NeoMcpClient {
                 }
             });
             try {
-                return result.get(CLIENT_ACTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                return result.get(NeoMcpConfig.actionTimeoutSeconds(), TimeUnit.SECONDS);
             } catch (InterruptedException exception) {
                 state.compareAndSet(ServerActionState.QUEUED, ServerActionState.CANCELLED);
                 Thread.currentThread().interrupt();
@@ -698,7 +726,7 @@ public final class NeoMcpClient {
             }
         });
         try {
-            return result.get(CLIENT_ACTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                return result.get(NeoMcpConfig.actionTimeoutSeconds(), TimeUnit.SECONDS);
         } catch (InterruptedException exception) {
             state.compareAndSet(ClientActionState.QUEUED, ClientActionState.CANCELLED);
             Thread.currentThread().interrupt();

@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 public interface McpToolExecutor {
     void executeCommand(String command) throws Exception;
 
+    JsonObject listMods() throws Exception;
+
     JsonObject getPlayerInfo() throws Exception;
 
     JsonObject getBlockEntityData(int x, int y, int z) throws Exception;

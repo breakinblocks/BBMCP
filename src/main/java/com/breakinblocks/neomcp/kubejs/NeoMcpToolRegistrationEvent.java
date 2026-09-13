@@ -1,5 +1,6 @@
 package com.breakinblocks.neomcp.kubejs;
 
+import com.breakinblocks.neomcp.config.NeoMcpConfig;
 import com.breakinblocks.neomcp.mcp.McpDynamicToolRegistry;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -105,7 +106,7 @@ public final class NeoMcpToolRegistrationEvent extends ServerKubeEvent {
             }
         });
         try {
-            return future.get(5, TimeUnit.SECONDS);
+            return future.get(NeoMcpConfig.actionTimeoutSeconds(), TimeUnit.SECONDS);
         } catch (TimeoutException exception) {
             if (state.compareAndSet(CallbackExecutionState.QUEUED, CallbackExecutionState.CANCELLED)) {
                 throw new TimeoutException("Timed out before the KubeJS tool callback started");

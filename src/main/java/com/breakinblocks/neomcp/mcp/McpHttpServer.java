@@ -1,5 +1,6 @@
 package com.breakinblocks.neomcp.mcp;
 
+import com.breakinblocks.neomcp.config.NeoMcpConfig;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -29,14 +30,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class McpHttpServer implements AutoCloseable {
-    private static final int MAX_REQUEST_BYTES = 1024 * 1024;
-    private static final int PORT = 8080;
-    private static final int REQUEST_THREAD_COUNT = 8;
-    private static final int REQUEST_QUEUE_CAPACITY = 16;
-    private static final int SSE_CONNECTION_LIMIT = 8;
-    private static final int SSE_QUEUE_CAPACITY = 32;
-    private static final long SSE_HEARTBEAT_SECONDS = 15L;
-    private static final double MAX_NEARBY_ENTITY_RADIUS = 512.0D;
     private static final JsonElement JSON_NULL = JsonNull.INSTANCE;
     private static final String JSON_CONTENT_TYPE = "application/json; charset=utf-8";
     private final Gson gson = new Gson();
@@ -58,18 +51,23 @@ public final class McpHttpServer implements AutoCloseable {
         if (server != null || requestExecutor != null) {
             throw new IllegalStateException("MCP server is already running");
         }
-        HttpServer newServer = HttpServer.create(new InetSocketAddress("127.0.0.1", PORT), 0);
+        int port = NeoMcpConfig.port();
+        int requestThreadCount = NeoMcpConfig.requestThreadCount();
+        int requestQueueCapacity = NeoMcpConfig.requestQueueCapacity();
+        int sseConnectionLimit = NeoMcpConfig.sseConnectionLimit();
+        int sseQueueCapacity = NeoMcpConfig.sseQueueCapacity();
+        HttpServer newServer = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
         ExecutorService newRequestExecutor = new ThreadPoolExecutor(
-                REQUEST_THREAD_COUNT,
-                REQUEST_THREAD_COUNT,
+                requestThreadCount,
+                requestThreadCount,
                 0L,
                 TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITY),
+                new ArrayBlockingQueue<>(requestQueueCapacity),
                 namedDaemonThreadFactory(),
                 new ThreadPoolExecutor.AbortPolicy());
         ExecutorService newSseExecutor = new ThreadPoolExecutor(
-                SSE_CONNECTION_LIMIT,
-                SSE_CONNECTION_LIMIT,
+                sseConnectionLimit,
+                sseConnectionLimit,
                 0L,
                 TimeUnit.MILLISECONDS,
                 new SynchronousQueue<>(),
@@ -219,7 +217,7 @@ public final class McpHttpServer implements AutoCloseable {
             exchange.getResponseHeaders().set("Cache-Control", "no-cache");
             exchange.getResponseHeaders().set("Connection", "keep-alive");
             exchange.sendResponseHeaders(200, 0);
-            client = new SseClient(exchange.getResponseBody());
+            client = new SseClient(exchange.getResponseBody(), NeoMcpConfig.sseQueueCapacity());
             SseClient acceptedClient = client;
             sseClients.add(acceptedClient);
             activeSseExecutor.execute(() -> runEventStream(exchange, acceptedClient));
@@ -244,7 +242,9 @@ public final class McpHttpServer implements AutoCloseable {
         try {
             client.sendComment();
             while (!client.isClosed()) {
-                String message = client.awaitMessage(SSE_HEARTBEAT_SECONDS, TimeUnit.SECONDS);
+                String message = client.awaitMessage(
+                        NeoMcpConfig.sseHeartbeatSeconds(),
+                        TimeUnit.SECONDS);
                 if (message == null) {
                     client.sendHeartbeat();
                 } else {
@@ -265,7 +265,7 @@ public final class McpHttpServer implements AutoCloseable {
     private boolean tryReserveSseConnection() {
         while (true) {
             int current = sseConnectionCount.get();
-            if (current >= SSE_CONNECTION_LIMIT) {
+            if (current >= NeoMcpConfig.sseConnectionLimit()) {
                 return false;
             }
             if (sseConnectionCount.compareAndSet(current, current + 1)) {
@@ -307,7 +307,7 @@ public final class McpHttpServer implements AutoCloseable {
         int totalBytes = 0;
         int bytesRead;
         while ((bytesRead = input.read(buffer)) != -1) {
-            if (bytesRead > MAX_REQUEST_BYTES - totalBytes) {
+            if (bytesRead > NeoMcpConfig.maxRequestBytes() - totalBytes) {
                 throw new RequestTooLargeException();
             }
             output.write(buffer, 0, bytesRead);
@@ -418,7 +418,10 @@ public final class McpHttpServer implements AutoCloseable {
     private JsonObject toolsList() {
         JsonArray tools = new JsonArray();
         JsonObject command = tool("execute_command", "Execute a command on the connected Minecraft server.", "command", "string", true);
-        tools.add(command);
+        if (NeoMcpConfig.allowCommandExecution()) {
+            tools.add(command);
+        }
+        tools.add(tool("list_mods", "List every mod loaded in the current Minecraft client."));
         JsonObject player = new JsonObject();
         player.addProperty("name", "get_player_info");
         player.addProperty("description", "Return the local player's position, dimension, and health.");
@@ -434,8 +437,18 @@ public final class McpHttpServer implements AutoCloseable {
                 "List registered object IDs in a registry filtered by namespace.",
                 "registry",
                 "namespace"));
-        tools.add(tool("read_latest_logs", "Return the last 100 lines of the active Minecraft logs/latest.log file."));
-        tools.add(tool("inject_kubejs_script", "Write JavaScript to KubeJS server_scripts and dispatch /reload.", "script", "string", true));
+        tools.add(tool(
+                "read_latest_logs",
+                "Return the last " + NeoMcpConfig.maxLogLines()
+                        + " lines of the active Minecraft logs/latest.log file."));
+        if (NeoMcpConfig.allowKubejsScriptInjection()) {
+            tools.add(tool(
+                    "inject_kubejs_script",
+                    "Write JavaScript to KubeJS server_scripts and dispatch /reload.",
+                    "script",
+                    "string",
+                    true));
+        }
         tools.add(numericPropertiesTool(
                 "get_nearby_entities",
                 "Return entities and state data within a radius of a coordinate.",
@@ -491,6 +504,7 @@ public final class McpHttpServer implements AutoCloseable {
         JsonObject arguments = call.has("arguments") ? call.getAsJsonObject("arguments") : new JsonObject();
         return switch (name) {
             case "execute_command" -> executeCommand(arguments);
+            case "list_mods" -> listMods(arguments);
             case "get_player_info" -> getPlayerInfo(arguments);
             case "get_block_entity_data" -> getBlockEntityData(arguments);
             case "inspect_item_components" -> inspectItemComponents(arguments);
@@ -532,11 +546,19 @@ public final class McpHttpServer implements AutoCloseable {
             throw new InvalidParamsException("execute_command requires a string command");
         }
         String command = arguments.get("command").getAsString();
+        if (!NeoMcpConfig.allowCommandExecution()) {
+            throw new InvalidParamsException("execute_command is disabled by NeoMCP configuration");
+        }
         if (command.isBlank()) {
             throw new InvalidParamsException("execute_command requires a non-blank command");
         }
         if (command.startsWith("/")) {
             throw new InvalidParamsException("execute_command command must not start with '/'");
+        }
+        if (command.length() > NeoMcpConfig.maxCommandLength()) {
+            throw new InvalidParamsException(
+                    "execute_command command exceeds the configured maximum length of "
+                            + NeoMcpConfig.maxCommandLength());
         }
         for (int index = 0; index < command.length(); index++) {
             if (!net.minecraft.util.StringUtil.isAllowedChatCharacter(command.charAt(index))) {
@@ -562,6 +584,20 @@ public final class McpHttpServer implements AutoCloseable {
             return result;
         } catch (Exception exception) {
             return toolErrorResult("Player information unavailable: " + errorMessage(exception));
+        }
+    }
+
+    private JsonObject listMods(JsonObject arguments) throws Exception {
+        if (!arguments.isEmpty()) {
+            throw new InvalidParamsException("list_mods does not accept arguments");
+        }
+        try {
+            JsonObject mods = toolExecutor.listMods();
+            JsonObject result = textToolResult(mods.toString());
+            result.add("structuredContent", mods);
+            return result;
+        } catch (Exception exception) {
+            return toolErrorResult("Loaded mod list unavailable: " + errorMessage(exception));
         }
     }
 
@@ -626,8 +662,17 @@ public final class McpHttpServer implements AutoCloseable {
     }
 
     private JsonObject injectKubejsScript(JsonObject arguments) throws Exception {
+        if (!NeoMcpConfig.allowKubejsScriptInjection()) {
+            throw new InvalidParamsException(
+                    "inject_kubejs_script is disabled by NeoMCP configuration");
+        }
         requireOnlyArguments(arguments, "script");
         String script = requiredString(arguments, "script", "inject_kubejs_script");
+        if (script.length() > NeoMcpConfig.maxKubejsScriptLength()) {
+            throw new InvalidParamsException(
+                    "inject_kubejs_script script exceeds the configured maximum length of "
+                            + NeoMcpConfig.maxKubejsScriptLength());
+        }
         try {
             JsonObject injection = toolExecutor.injectKubejsScript(script);
             JsonObject result = textToolResult(injection.toString());
@@ -644,9 +689,10 @@ public final class McpHttpServer implements AutoCloseable {
         double y = requiredNumber(arguments, "y", "get_nearby_entities");
         double z = requiredNumber(arguments, "z", "get_nearby_entities");
         double radius = requiredNumber(arguments, "radius", "get_nearby_entities");
-        if (radius < 0.0D || radius > MAX_NEARBY_ENTITY_RADIUS) {
+        if (radius < 0.0D || radius > NeoMcpConfig.maxNearbyEntityRadius()) {
             throw new InvalidParamsException(
-                    "get_nearby_entities radius must be between 0 and " + MAX_NEARBY_ENTITY_RADIUS);
+                    "get_nearby_entities radius must be between 0 and "
+                            + NeoMcpConfig.maxNearbyEntityRadius());
         }
         try {
             JsonObject nearby = toolExecutor.getNearbyEntities(x, y, z, radius);
@@ -1056,11 +1102,12 @@ public final class McpHttpServer implements AutoCloseable {
 
     private static final class SseClient {
         private final OutputStream output;
-        private final ArrayBlockingQueue<String> messages = new ArrayBlockingQueue<>(SSE_QUEUE_CAPACITY);
+        private final ArrayBlockingQueue<String> messages;
         private final AtomicBoolean closed = new AtomicBoolean();
 
-        private SseClient(OutputStream output) {
+        private SseClient(OutputStream output, int queueCapacity) {
             this.output = output;
+            this.messages = new ArrayBlockingQueue<>(queueCapacity);
         }
 
         private void sendComment() throws IOException {
