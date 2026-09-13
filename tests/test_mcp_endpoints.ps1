@@ -159,7 +159,7 @@ function Test-Tool {
     }
 }
 
-Write-Output "Testing NeoMCP at $BaseUri"
+Write-Output "Testing BBMCP at $BaseUri"
 
 Test-Protocol -Name 'initialize' -Method 'initialize' -Params @{} | Out-Null
 Test-Protocol -Name 'ping' -Method 'ping' -Params @{} | Out-Null
@@ -273,9 +273,9 @@ Test-Tool -Name 'check_recipe_cycles' -Arguments @{ item_id = 'minecraft:iron_in
 Test-Tool -Name 'find_underutilized_items' -Arguments @{ mod_namespace = 'minecraft'; save_json = $true } | Out-Null
 
 $injectedScript = @'
-NeoMcpEvents.register(event => {
+BbmcpEvents.register(event => {
   event.registerTool(
-    "neomcp_endpoint_test",
+    "bbmcp_endpoint_test",
     "Returns the active dimension for endpoint verification.",
     { type: "object", additionalProperties: false },
     context => ({ dimension: String(context.level.dimension) })
@@ -287,10 +287,10 @@ Start-Sleep -Seconds 3
 $reloadedToolsResponse = Test-Protocol -Name 'tools/list (after KubeJS reload)' -Method 'tools/list' -Params @{}
 if ($null -ne $reloadedToolsResponse -and $null -ne $reloadedToolsResponse.result) {
     $reloadedNames = @($reloadedToolsResponse.result.tools | ForEach-Object { [string]$_.name })
-    $dynamicDetails = [ordered]@{ present = 'neomcp_endpoint_test' -in $reloadedNames; advertised_count = $reloadedNames.Count }
+    $dynamicDetails = [ordered]@{ present = 'bbmcp_endpoint_test' -in $reloadedNames; advertised_count = $reloadedNames.Count }
     Add-Record -Name 'dynamic KubeJS tool publication' -Kind 'tool' -Status $(if ($dynamicDetails.present) { 'PASS' } else { 'FAIL' }) -Details $dynamicDetails
     if ($dynamicDetails.present) {
-        Test-Tool -Name 'neomcp_endpoint_test' -Arguments @{} | Out-Null
+        Test-Tool -Name 'bbmcp_endpoint_test' -Arguments @{} | Out-Null
     }
 }
 

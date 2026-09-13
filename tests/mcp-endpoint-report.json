@@ -1,687 +1,809 @@
-{
-  "generated_at_utc": "2026-09-13T10:29:34.6319039Z",
-  "endpoint": "http://localhost:8080/mcp",
-  "chapter_id": "6F3CA3EA0F8276C0",
-  "recipe_id": "minecraft:iron_ingot_from_smelting_raw_iron",
-  "passed": 44,
-  "failed": 0,
-  "checks": [
-    {
-      "name": "initialize",
-      "kind": "protocol",
-      "status": "PASS",
-      "details": {
-        "request_id": 1,
-        "has_error": false
-      }
-    },
-    {
-      "name": "ping",
-      "kind": "protocol",
-      "status": "PASS",
-      "details": {
-        "request_id": 2,
-        "has_error": false
-      }
-    },
-    {
-      "name": "tools/list (initial)",
-      "kind": "protocol",
-      "status": "PASS",
-      "details": {
-        "request_id": 3,
-        "has_error": false
-      }
-    },
-    {
-      "name": "tools/list (required catalog)",
-      "kind": "protocol",
-      "status": "PASS",
-      "details": {
-        "advertised_count": 33,
-        "expected_count": 32,
-        "missing": []
-      }
-    },
-    {
-      "name": "execute_command",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "Command sent"
-        }
-      }
-    },
-    {
-      "name": "get_player_info",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"x\":-3.699999988079071,\"y\":64.0,\"z\":6.699999988079071,\"dimension\":\"minecraft:overworld\",\"health\":20.0}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "execute_command (block entity fixture)",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "Command sent"
-        }
-      }
-    },
-    {
-      "name": "execute_command (held item fixture)",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "Command sent"
-        }
-      }
-    },
-    {
-      "name": "get_block_entity_data",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"position\":{\"x\":-4,\"y\":63,\"z\":6},\"type\":\"minecraft:chest\",\"nbt\":{\"x\":-4,\"y\":63,\"Items\":[],\"z\":6,\"id\":\"minecraft:chest\"},\"snbt\":\"{Items:[],id:\\\"minecraft:chest\\\",x:-4,y:63,z:6}\",\"data_components\":{},\"data_components_snbt\":\"{}\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "inspect_item_components",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"item\":\"minecraft:egg\",\"count\":1,\"max_count\":16,\"empty\":false,\"name\":\"Egg\",\"stack\":{\"count\":1,\"id\":\"minecraft:egg\"},\"stack_snbt\":\"{count:1,id:\\\"minecraft:egg\\\"}\",\"data_components\":{\"minecraft:lore\":[],\"minecraft:max_stack_size\":16,\"minecraft:attribute_modifiers\":{\"modifiers\":[]},\"minecraft:enchantments\":{\"levels\":{}},\"minecraft:rarity\":\"common\",\"minecraft:repair_cost\":0},\"data_components_snbt\":\"{..."
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "query_registry",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"registry\":\"minecraft:item\",\"namespace\":\"minecraft\",\"count\":1333,\"objects\":[\"minecraft:acacia_boat\",\"minecraft:acacia_button\",\"minecraft:acacia_chest_boat\",\"minecraft:acacia_door\",\"minecraft:acacia_fence\",\"minecraft:acacia_fence_gate\",\"minecraft:acacia_hanging_sign\",\"minecraft:acacia_leaves\",\"minecraft:acacia_log\",\"minecraft:acacia_planks\",\"minecraft:acacia_pressure_plate\",\"minecraft:acacia_sapli..."
-        },
-        "count": 1333
-      }
-    },
-    {
-      "name": "read_latest_logs",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "[13Sep2026 12:24:09.773] [Render thread/INFO] [mezz.jei.core.util.LoggedTimer/]: Building ingredient filter took 300.4 milliseconds\n[13Sep2026 12:24:09.799] [Render thread/INFO] [mezz.jei.library.load.PluginCallerTimerRunnable/]: Registering Runtime: jei:neoforge_gui took 344.4 milliseconds\n[13Sep2026 12:24:09.800] [Render thread/INFO] [mezz.jei.library.load.PluginCaller/]: Registering Runtime too..."
-        },
-        "count": 1,
-        "path": "logs\\latest.log"
-      }
-    },
-    {
-      "name": "get_nearby_entities",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"dimension\":\"minecraft:overworld\",\"center_x\":-3.699999988079071,\"center_y\":64.0,\"center_z\":6.699999988079071,\"radius\":8.0,\"count\":1,\"entities\":[{\"type\":\"minecraft:player\",\"uuid\":\"380df991-f603-344c-a090-369bad2a924a\",\"x\":-3.699999988079071,\"y\":63.875,\"z\":6.699999988079071,\"block_x\":-4,\"block_y\":63,\"block_z\":6,\"yaw\":-110.16365,\"pitch\":12.095316,\"on_ground\":true,\"alive\":true,\"removed\":false,\"health..."
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "list_loot_tables",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"count\":1179,\"loot_tables\":[\"minecraft:archaeology/desert_pyramid\",\"minecraft:archaeology/desert_well\",\"minecraft:archaeology/ocean_ruin_cold\",\"minecraft:archaeology/ocean_ruin_warm\",\"minecraft:archaeology/trail_ruins_common\",\"minecraft:archaeology/trail_ruins_rare\",\"minecraft:blocks/acacia_button\",\"minecraft:blocks/acacia_door\",\"minecraft:blocks/acacia_fence\",\"minecraft:blocks/acacia_fence_gate\"..."
-        },
-        "count": 1179
-      }
-    },
-    {
-      "name": "get_loot_table",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"type\":\"minecraft:chest\",\"random_sequence\":\"minecraft:chests/simple_dungeon\",\"pools\":[{\"rolls\":{\"min\":1.0,\"max\":3.0,\"type\":\"minecraft:uniform\"},\"bonus_rolls\":0.0,\"name\":\"pool0\",\"entries\":[{\"name\":\"minecraft:saddle\",\"weight\":20,\"type\":\"minecraft:item\"},{\"name\":\"minecraft:golden_apple\",\"weight\":15,\"type\":\"minecraft:item\"},{\"name\":\"minecraft:enchanted_golden_apple\",\"weight\":2,\"type\":\"minecraft:item\"..."
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "search_loot_tables",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"item_id\":\"minecraft:iron_ingot\",\"count\":24,\"loot_tables\":[\"minecraft:chests/abandoned_mineshaft\",\"minecraft:chests/bastion_bridge\",\"minecraft:chests/bastion_other\",\"minecraft:chests/bastion_treasure\",\"minecraft:chests/buried_treasure\",\"minecraft:chests/desert_pyramid\",\"minecraft:chests/end_city_treasure\",\"minecraft:chests/jungle_temple\",\"minecraft:chests/nether_bridge\",\"minecraft:chests/pillager..."
-        },
-        "count": 24
-      }
-    },
-    {
-      "name": "look_at",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":15,\"state\":\"started\",\"message\":\"Looking at target\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "get_action_status (look_at)",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":15,\"state\":\"succeeded\",\"elapsed_ticks\":2,\"message\":\"Look completed\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "jump",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":16,\"state\":\"succeeded\",\"message\":\"Jump executed\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "move",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":17,\"state\":\"started\",\"message\":\"Movement started\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "get_action_status (move)",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":17,\"state\":\"succeeded\",\"elapsed_ticks\":2,\"message\":\"FORWARD movement completed\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "interact",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":18,\"state\":\"succeeded\",\"message\":\"Air interaction succeeded\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "move (cancellation fixture)",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":19,\"state\":\"started\",\"message\":\"Movement started\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "cancel_action",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":19,\"state\":\"cancelled\",\"message\":\"Action cancelled\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "get_action_status (cancelled)",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"action_id\":19,\"state\":\"cancelled\",\"elapsed_ticks\":40,\"message\":\"Action cancelled\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "open_quest_gui",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"id\":\"6F3CA3EA0F8276C0\",\"type\":\"chapter\",\"opened\":true}"
-        },
-        "count": 1,
-        "opened": true
-      }
-    },
-    {
-      "name": "get_chapter_layout",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"chapter_id\":\"6F3CA3EA0F8276C0\",\"title\":\"From Wood to the End\",\"default_quest_size\":1.0,\"default_quest_shape\":\"circle\",\"quest_count\":18,\"quests\":[{\"id\":\"1000000000000001\",\"title\":\"First Timber\",\"x\":0.0,\"y\":0.0,\"width\":1.75,\"height\":1.75,\"size\":1.75,\"shape\":\"diamond\",\"dependencies\":[]},{\"id\":\"1000000000000002\",\"title\":\"A Place to Work\",\"x\":3.0,\"y\":0.0,\"width\":1.0,\"height\":1.0,\"size\":1.0,\"shape\":\"c..."
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "export_chapter_canvas",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "image"
-          ],
-          "image_base64_lengths": [
-            412992
-          ]
-        },
-        "count": 1,
-        "width": 3471,
-        "height": 2046
-      }
-    },
-    {
-      "name": "take_screenshot",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\screenshots\\\\neomcp_3fd990ec-8086-4376-bc8e-8446e3f8d9d8.png\",\"screen_active\":true,\"ui_included\":true,\"width\":854,\"height\":480}"
-        },
-        "count": 1,
-        "path": "C:\\Users\\TheonlyTazz\\Documents\\Github\\BreakinBlocks\\NeoMCP\\run\\screenshots\\neomcp_3fd990ec-8086-4376-bc8e-8446e3f8d9d8.png",
-        "width": 854,
-        "height": 480
-      }
-    },
-    {
-      "name": "update_take_screenshot",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\screenshots\\\\neomcp_92fa5377-a11f-4685-8dc2-6abe2448566e.png\",\"screen_active\":true,\"ui_included\":true,\"width\":854,\"height\":480}"
-        },
-        "count": 1,
-        "path": "C:\\Users\\TheonlyTazz\\Documents\\Github\\BreakinBlocks\\NeoMCP\\run\\screenshots\\neomcp_92fa5377-a11f-4685-8dc2-6abe2448566e.png",
-        "width": 854,
-        "height": 480
-      }
-    },
-    {
-      "name": "recipe_capabilities",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"canonical_recipe_manager\":true,\"recipe_manager_source\":\"client_synchronized_recipe_manager\",\"detected_viewers\":[\"jei\"],\"jei_adapter_available\":true,\"emi_adapter_available\":false,\"rei_adapter_available\":false,\"recipe_card_capture\":true}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "find_recipes",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"query\":\"iron_ingot\",\"recipe_type\":\"\",\"count\":5,\"truncated\":true,\"recipes\":[{\"id\":\"minecraft:stonecutter\",\"type\":\"minecraft:crafting\",\"serializer\":\"minecraft:crafting_shaped\",\"group\":\"\",\"result\":{\"id\":\"minecraft:stonecutter\",\"count\":1,\"empty\":false,\"stack\":{\"id\":\"minecraft:stonecutter\",\"count\":1}},\"ingredients\":[{\"kind\":\"items\",\"items\":[],\"tags\":[]},{\"kind\":\"items\",\"items\":[{\"id\":\"minecraft:iron_..."
-        },
-        "count": 5
-      }
-    },
-    {
-      "name": "get_recipe",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"recipe_id\":\"minecraft:iron_ingot_from_smelting_raw_iron\",\"recipe\":{\"id\":\"minecraft:iron_ingot_from_smelting_raw_iron\",\"type\":\"minecraft:smelting\",\"serializer\":\"minecraft:smelting\",\"group\":\"iron_ingot\",\"result\":{\"id\":\"minecraft:iron_ingot\",\"count\":1,\"empty\":false,\"stack\":{\"id\":\"minecraft:iron_ingot\",\"count\":1}},\"ingredients\":[{\"kind\":\"items\",\"items\":[{\"id\":\"minecraft:raw_iron\",\"count\":1,\"empty\":f..."
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "view_recipe",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"recipe_id\":\"minecraft:iron_ingot_from_smelting_raw_iron\",\"viewer\":\"jei\",\"mode\":\"recipe\",\"opened\":true}"
-        },
-        "count": 1,
-        "viewer": "jei",
-        "opened": true
-      }
-    },
-    {
-      "name": "get_recipe_tree",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"item_id\":\"minecraft:iron_ingot\",\"max_depth\":2,\"tree\":{\"item_id\":\"minecraft:iron_ingot\",\"depth\":0,\"recipes\":[{\"id\":\"minecraft:iron_ingot_from_iron_block\",\"type\":\"minecraft:crafting\",\"serializer\":\"minecraft:crafting_shapeless\",\"group\":\"iron_ingot\",\"result\":{\"id\":\"minecraft:iron_ingot\",\"count\":9,\"empty\":false,\"stack\":{\"id\":\"minecraft:iron_ingot\",\"count\":9}},\"ingredients\":[{\"kind\":\"items\",\"items\":[{..."
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "get_item_usages",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"item_id\":\"minecraft:iron_ingot\",\"adapter\":\"jei\",\"count\":58,\"recipes\":[{\"recipe_id\":\"minecraft:anvil.materials_repair.\",\"category\":\"minecraft:anvil\",\"title\":\"Anvil\"},{\"recipe_id\":\"minecraft:stonecutter\",\"recipe\":{\"id\":\"minecraft:stonecutter\",\"type\":\"minecraft:crafting\",\"serializer\":\"minecraft:crafting_shaped\",\"group\":\"\",\"result\":{\"id\":\"minecraft:stonecutter\",\"count\":1,\"empty\":false,\"stack\":{\"id\":..."
-        },
-        "count": 58
-      }
-    },
-    {
-      "name": "get_workstation_recipes",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"workstation_id\":\"minecraft:crafting_table\",\"adapter\":\"jei\",\"count\":942,\"categories\":[{\"id\":\"minecraft:crafting\",\"title\":\"Crafting\"}],\"recipes\":[{\"recipe_id\":\"minecraft:yellow_dye_from_dandelion\",\"recipe\":{\"id\":\"minecraft:yellow_dye_from_dandelion\",\"type\":\"minecraft:crafting\",\"serializer\":\"minecraft:crafting_shapeless\",\"group\":\"yellow_dye\",\"result\":{\"id\":\"minecraft:yellow_dye\",\"count\":1,\"empty\":f..."
-        },
-        "count": 942
-      }
-    },
-    {
-      "name": "scan_for_loops",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"item_id\":\"minecraft:iron_ingot\",\"max_depth\":5,\"count\":20,\"budget\":5000,\"nodes_visited\":5000,\"truncated\":true,\"loops\":[{\"items\":[\"minecraft:iron_ingot\",\"minecraft:iron_block\",\"minecraft:iron_ingot\"],\"recipes\":[\"minecraft:iron_ingot_from_iron_block\",\"minecraft:iron_block\"]},{\"items\":[\"minecraft:iron_ingot\",\"minecraft:iron_nugget\",\"minecraft:iron_ingot\"],\"recipes\":[\"minecraft:iron_ingot_from_nugget..."
-        },
-        "count": 20
-      }
-    },
-    {
-      "name": "capture_recipe_card",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "image"
-          ],
-          "image_base64_lengths": [
-            3280
-          ]
-        },
-        "count": 1,
-        "width": 320,
-        "height": 180,
-        "viewer": "jei"
-      }
-    },
-    {
-      "name": "inject_kubejs_script",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"script_path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\kubejs\\\\server_scripts\\\\neomcp_injected.js\",\"reload_command\":\"/reload\",\"reload_dispatched\":true}"
-        },
-        "count": 1,
-        "reload_dispatched": true
-      }
-    },
-    {
-      "name": "tools/list (after KubeJS reload)",
-      "kind": "protocol",
-      "status": "PASS",
-      "details": {
-        "request_id": 40,
-        "has_error": false
-      }
-    },
-    {
-      "name": "dynamic KubeJS tool publication",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "present": true,
-        "advertised_count": 33
-      }
-    },
-    {
-      "name": "neomcp_endpoint_test",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "{\"dimension\":\"minecraft:overworld\"}"
-        },
-        "count": 1
-      }
-    },
-    {
-      "name": "execute_command (fixture cleanup)",
-      "kind": "tool",
-      "status": "PASS",
-      "details": {
-        "is_error": false,
-        "content": {
-          "content_types": [
-            "text"
-          ],
-          "image_base64_lengths": [],
-          "text": "Command sent"
-        }
-      }
-    }
-  ]
+﻿{
+    "generated_at_utc":  "2026-09-13T16:03:51.7506834Z",
+    "endpoint":  "http://localhost:8080/mcp",
+    "chapter_id":  "6F3CA3EA0F8276C0",
+    "recipe_id":  "minecraft:iron_ingot_from_smelting_raw_iron",
+    "passed":  47,
+    "failed":  1,
+    "checks":  [
+                   {
+                       "name":  "initialize",
+                       "kind":  "protocol",
+                       "status":  "PASS",
+                       "details":  {
+                                       "request_id":  1,
+                                       "has_error":  false
+                                   }
+                   },
+                   {
+                       "name":  "ping",
+                       "kind":  "protocol",
+                       "status":  "PASS",
+                       "details":  {
+                                       "request_id":  2,
+                                       "has_error":  false
+                                   }
+                   },
+                   {
+                       "name":  "tools/list (initial)",
+                       "kind":  "protocol",
+                       "status":  "PASS",
+                       "details":  {
+                                       "request_id":  3,
+                                       "has_error":  false
+                                   }
+                   },
+                   {
+                       "name":  "tools/list (required catalog)",
+                       "kind":  "protocol",
+                       "status":  "PASS",
+                       "details":  {
+                                       "advertised_count":  37,
+                                       "expected_count":  36,
+                                       "missing":  [
+
+                                                   ]
+                                   }
+                   },
+                   {
+                       "name":  "execute_command",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "Command sent"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "get_player_info",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"x\":-2.97349227127598,\"y\":64.0,\"z\":5.778622905059376,\"dimension\":\"minecraft:overworld\",\"health\":20.0}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "execute_command (block entity fixture)",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "Command sent"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "execute_command (held item fixture)",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "Command sent"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "get_block_entity_data",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"position\":{\"x\":-3,\"y\":63,\"z\":5},\"type\":\"minecraft:chest\",\"nbt\":{\"x\":-3,\"y\":63,\"Items\":[],\"z\":5,\"id\":\"minecraft:chest\"},\"snbt\":\"{Items:[],id:\\\"minecraft:chest\\\",x:-3,y:63,z:5}\",\"data_components\":{},\"data_components_snbt\":\"{}\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "inspect_item_components",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"item\":\"minecraft:egg\",\"count\":1,\"max_count\":16,\"empty\":false,\"name\":\"Egg\",\"stack\":{\"count\":1,\"id\":\"minecraft:egg\"},\"stack_snbt\":\"{count:1,id:\\\"minecraft:egg\\\"}\",\"data_components\":{\"minecraft:lore\":[],\"minecraft:max_stack_size\":16,\"minecraft:attribute_modifiers\":{\"modifiers\":[]},\"minecraft:enchantments\":{\"levels\":{}},\"minecraft:rarity\":\"common\",\"minecraft:repair_cost\":0},\"data_components_snbt\":\"{..."
+                                                   },
+                                       "count":  1
+                                   }
+                   },
+                   {
+                       "name":  "query_registry",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"registry\":\"minecraft:item\",\"namespace\":\"minecraft\",\"count\":1333,\"objects\":[\"minecraft:acacia_boat\",\"minecraft:acacia_button\",\"minecraft:acacia_chest_boat\",\"minecraft:acacia_door\",\"minecraft:acacia_fence\",\"minecraft:acacia_fence_gate\",\"minecraft:acacia_hanging_sign\",\"minecraft:acacia_leaves\",\"minecraft:acacia_log\",\"minecraft:acacia_planks\",\"minecraft:acacia_pressure_plate\",\"minecraft:acacia_sapli..."
+                                                   },
+                                       "count":  1333
+                                   }
+                   },
+                   {
+                       "name":  "read_latest_logs",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "[13Sep2026 18:03:06.696] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas\n[13Sep2026 18:03:06.696] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas\n[13Sep2026 18:03:06.960] [Render thread/INFO] [net.minecraft.client.ren..."
+                                                   },
+                                       "path":  "logs\\latest.log"
+                                   }
+                   },
+                   {
+                       "name":  "get_nearby_entities",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"dimension\":\"minecraft:overworld\",\"center_x\":-2.97349227127598,\"center_y\":64.0,\"center_z\":5.778622905059376,\"radius\":8.0,\"count\":1,\"entities\":[{\"type\":\"minecraft:player\",\"uuid\":\"380df991-f603-344c-a090-369bad2a924a\",\"x\":-2.97349227127598,\"y\":64.0,\"z\":5.778622905059376,\"block_x\":-3,\"block_y\":64,\"block_z\":5,\"yaw\":-126.89748,\"pitch\":-14.850006,\"on_ground\":true,\"alive\":true,\"removed\":false,\"health\":2..."
+                                                   },
+                                       "count":  1
+                                   }
+                   },
+                   {
+                       "name":  "list_loot_tables",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"count\":1184,\"loot_tables\":[\"ftbquests:blocks/loot_crate_opener\",\"ftbquests:blocks/screen_1\",\"ftbquests:blocks/screen_3\",\"ftbquests:blocks/screen_5\",\"ftbquests:blocks/screen_7\",\"minecraft:archaeology/desert_pyramid\",\"minecraft:archaeology/desert_well\",\"minecraft:archaeology/ocean_ruin_cold\",\"minecraft:archaeology/ocean_ruin_warm\",\"minecraft:archaeology/trail_ruins_common\",\"minecraft:archaeology/t..."
+                                                   },
+                                       "count":  1184
+                                   }
+                   },
+                   {
+                       "name":  "get_loot_table",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"type\":\"minecraft:chest\",\"random_sequence\":\"minecraft:chests/simple_dungeon\",\"pools\":[{\"rolls\":{\"min\":1.0,\"max\":3.0,\"type\":\"minecraft:uniform\"},\"bonus_rolls\":0.0,\"name\":\"pool0\",\"entries\":[{\"name\":\"minecraft:saddle\",\"weight\":20,\"type\":\"minecraft:item\"},{\"name\":\"minecraft:golden_apple\",\"weight\":15,\"type\":\"minecraft:item\"},{\"name\":\"minecraft:enchanted_golden_apple\",\"weight\":2,\"type\":\"minecraft:item\"..."
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "search_loot_tables",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"item_id\":\"minecraft:iron_ingot\",\"count\":24,\"loot_tables\":[\"minecraft:chests/abandoned_mineshaft\",\"minecraft:chests/bastion_bridge\",\"minecraft:chests/bastion_other\",\"minecraft:chests/bastion_treasure\",\"minecraft:chests/buried_treasure\",\"minecraft:chests/desert_pyramid\",\"minecraft:chests/end_city_treasure\",\"minecraft:chests/jungle_temple\",\"minecraft:chests/nether_bridge\",\"minecraft:chests/pillager..."
+                                                   },
+                                       "count":  24
+                                   }
+                   },
+                   {
+                       "name":  "look_at",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":1,\"state\":\"started\",\"message\":\"Looking at target\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "get_action_status (look_at)",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":1,\"state\":\"succeeded\",\"elapsed_ticks\":2,\"message\":\"Look completed\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "jump",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":2,\"state\":\"succeeded\",\"message\":\"Jump executed\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "move",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":3,\"state\":\"started\",\"message\":\"Movement started\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "get_action_status (move)",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":3,\"state\":\"failed\",\"elapsed_ticks\":0,\"message\":\"Movement stopped because the local player or world screen changed\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "interact",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":4,\"state\":\"succeeded\",\"message\":\"Air interaction succeeded\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "move (cancellation fixture)",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":5,\"state\":\"started\",\"message\":\"Movement started\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "cancel_action",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":5,\"state\":\"cancelled\",\"message\":\"Action cancelled\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "get_action_status (cancelled)",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"action_id\":5,\"state\":\"cancelled\",\"elapsed_ticks\":0,\"message\":\"Action cancelled\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "open_quest_gui",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"id\":\"6F3CA3EA0F8276C0\",\"type\":\"chapter\",\"opened\":true}"
+                                                   },
+                                       "opened":  true
+                                   }
+                   },
+                   {
+                       "name":  "get_chapter_layout",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"chapter_id\":\"6F3CA3EA0F8276C0\",\"title\":\"From Wood to the End\",\"default_quest_size\":1.0,\"default_quest_shape\":\"circle\",\"quest_count\":18,\"quests\":[{\"id\":\"1000000000000001\",\"title\":\"First Timber\",\"x\":0.0,\"y\":0.0,\"width\":1.75,\"height\":1.75,\"size\":1.75,\"shape\":\"diamond\",\"dependencies\":[]},{\"id\":\"1000000000000002\",\"title\":\"A Place to Work\",\"x\":3.0,\"y\":0.0,\"width\":1.0,\"height\":1.0,\"size\":1.0,\"shape\":\"c..."
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "export_chapter_canvas",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "image"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+                                                                                    61536
+                                                                                ]
+                                                   },
+                                       "width":  1227,
+                                       "height":  350,
+                                       "saved_to_screenshots":  true,
+                                       "screenshot_path":  "C:\\Users\\TheonlyTazz\\Documents\\Github\\BreakinBlocks\\NeoMCP\\run\\screenshots\\bbmcp_chapter_6F3CA3EA0F8276C0_5be62eb1-1904-434d-a4f9-93369a464e4a.png"
+                                   }
+                   },
+                   {
+                       "name":  "take_screenshot",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\screenshots\\\\bbmcp_aa34e93b-4c8e-48a0-bb81-36ae96c9f12b.png\",\"screen_active\":true,\"ui_included\":true,\"width\":854,\"height\":480}"
+                                                   },
+                                       "path":  "C:\\Users\\TheonlyTazz\\Documents\\Github\\BreakinBlocks\\NeoMCP\\run\\screenshots\\bbmcp_aa34e93b-4c8e-48a0-bb81-36ae96c9f12b.png",
+                                       "width":  854,
+                                       "height":  480
+                                   }
+                   },
+                   {
+                       "name":  "update_take_screenshot",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\screenshots\\\\bbmcp_72c1ec73-6c3a-4003-885c-b923f73df2b8.png\",\"screen_active\":true,\"ui_included\":true,\"width\":854,\"height\":480}"
+                                                   },
+                                       "path":  "C:\\Users\\TheonlyTazz\\Documents\\Github\\BreakinBlocks\\NeoMCP\\run\\screenshots\\bbmcp_72c1ec73-6c3a-4003-885c-b923f73df2b8.png",
+                                       "width":  854,
+                                       "height":  480
+                                   }
+                   },
+                   {
+                       "name":  "recipe_capabilities",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"canonical_recipe_manager\":true,\"recipe_manager_source\":\"client_synchronized_recipe_manager\",\"detected_viewers\":[\"jei\"],\"jei_adapter_available\":true,\"emi_adapter_available\":false,\"rei_adapter_available\":false,\"recipe_card_capture\":true,\"limits\":{\"max_recipe_results\":1000,\"max_recipe_inline_bytes\":2000000,\"max_recipe_tree_depth\":5,\"max_recipe_loop_depth\":5,\"max_recipe_graph_nodes\":5000}}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "find_recipes",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"query\":\"iron_ingot\",\"recipe_type\":\"\",\"count\":5,\"truncated\":true,\"recipes\":[{\"id\":\"minecraft:stonecutter\",\"type\":\"minecraft:crafting\",\"serializer\":\"minecraft:crafting_shaped\",\"group\":\"\",\"result\":{\"id\":\"minecraft:stonecutter\",\"count\":1,\"empty\":false,\"stack\":{\"id\":\"minecraft:stonecutter\",\"count\":1}},\"ingredients\":[{\"kind\":\"items\",\"items\":[],\"tags\":[]},{\"kind\":\"items\",\"items\":[{\"id\":\"minecraft:iron_..."
+                                                   },
+                                       "count":  5
+                                   }
+                   },
+                   {
+                       "name":  "get_recipe",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"recipe_id\":\"minecraft:iron_ingot_from_smelting_raw_iron\",\"recipe\":{\"id\":\"minecraft:iron_ingot_from_smelting_raw_iron\",\"type\":\"minecraft:smelting\",\"serializer\":\"minecraft:smelting\",\"group\":\"iron_ingot\",\"result\":{\"id\":\"minecraft:iron_ingot\",\"count\":1,\"empty\":false,\"stack\":{\"id\":\"minecraft:iron_ingot\",\"count\":1}},\"ingredients\":[{\"kind\":\"items\",\"items\":[{\"id\":\"minecraft:raw_iron\",\"count\":1,\"empty\":f..."
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "view_recipe",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"recipe_id\":\"minecraft:iron_ingot_from_smelting_raw_iron\",\"viewer\":\"jei\",\"mode\":\"recipe\",\"opened\":true}"
+                                                   },
+                                       "viewer":  "jei",
+                                       "opened":  true
+                                   }
+                   },
+                   {
+                       "name":  "get_recipe_tree",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"item_id\":\"minecraft:iron_ingot\",\"max_depth\":2,\"tree\":{\"item_id\":\"minecraft:iron_ingot\",\"depth\":0,\"recipes\":[{\"id\":\"minecraft:iron_ingot_from_iron_block\",\"type\":\"minecraft:crafting\",\"serializer\":\"minecraft:crafting_shapeless\",\"group\":\"iron_ingot\",\"result\":{\"id\":\"minecraft:iron_ingot\",\"count\":9,\"empty\":false,\"stack\":{\"id\":\"minecraft:iron_ingot\",\"count\":9}},\"ingredients\":[{\"kind\":\"items\",\"items\":[{..."
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "get_item_usages",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"item_id\":\"minecraft:iron_ingot\",\"adapter\":\"jei\",\"count\":58,\"recipes\":[{\"recipe_id\":\"minecraft:anvil.materials_repair.\",\"category\":\"minecraft:anvil\",\"title\":\"Anvil\"},{\"recipe_id\":\"minecraft:stonecutter\",\"recipe\":{\"id\":\"minecraft:stonecutter\",\"type\":\"minecraft:crafting\",\"serializer\":\"minecraft:crafting_shaped\",\"group\":\"\",\"result\":{\"id\":\"minecraft:stonecutter\",\"count\":1,\"empty\":false,\"stack\":{\"id\":..."
+                                                   },
+                                       "count":  58
+                                   }
+                   },
+                   {
+                       "name":  "get_workstation_recipes",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"workstation_id\":\"minecraft:crafting_table\",\"adapter\":\"jei\",\"count\":949,\"categories\":[{\"id\":\"minecraft:crafting\",\"title\":\"Crafting\"}],\"recipes\":[{\"recipe_id\":\"minecraft:yellow_dye_from_dandelion\",\"recipe\":{\"id\":\"minecraft:yellow_dye_from_dandelion\",\"type\":\"minecraft:crafting\",\"serializer\":\"minecraft:crafting_shapeless\",\"group\":\"yellow_dye\",\"result\":{\"id\":\"minecraft:yellow_dye\",\"count\":1,\"empty\":f..."
+                                                   },
+                                       "count":  949
+                                   }
+                   },
+                   {
+                       "name":  "scan_for_loops",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"item_id\":\"minecraft:iron_ingot\",\"max_depth\":5,\"count\":20,\"budget\":5000,\"nodes_visited\":5000,\"truncated\":true,\"loops\":[{\"items\":[\"minecraft:iron_ingot\",\"minecraft:iron_block\",\"minecraft:iron_ingot\"],\"recipes\":[\"minecraft:iron_ingot_from_iron_block\",\"minecraft:iron_block\"]},{\"items\":[\"minecraft:iron_ingot\",\"minecraft:iron_nugget\",\"minecraft:iron_ingot\"],\"recipes\":[\"minecraft:iron_ingot_from_nugget..."
+                                                   },
+                                       "count":  20
+                                   }
+                   },
+                   {
+                       "name":  "capture_recipe_card",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "image"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+                                                                                    5088
+                                                                                ]
+                                                   },
+                                       "width":  320,
+                                       "height":  180,
+                                       "viewer":  "jei",
+                                       "saved_to_screenshots":  true,
+                                       "screenshot_path":  "C:\\Users\\TheonlyTazz\\Documents\\Github\\BreakinBlocks\\NeoMCP\\run\\screenshots\\bbmcp_recipe_c93e485a-4621-4be2-92aa-6f8536ca1a2a.png"
+                                   }
+                   },
+                   {
+                       "name":  "dump_recipes",
+                       "kind":  "tool",
+                       "status":  "FAIL",
+                       "details":  {
+                                       "error":  "Missing JSON-RPC result",
+                                       "response":  {
+                                                        "jsonrpc":  "2.0",
+                                                        "id":  39,
+                                                        "error":  {
+                                                                      "code":  -32602,
+                                                                      "message":  "dump_recipes requires a non-blank string recipe_type"
+                                                                  }
+                                                    }
+                                   }
+                   },
+                   {
+                       "name":  "analyze_recipe_complexity",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"item_id\":\"minecraft:iron_ingot\",\"mod_namespace_diversity\":1,\"max_sequential_processing_depth\":2,\"depth_limit\":5,\"unique_workstation_catalyst_count\":0,\"workstation_catalyst_metadata_available\":false,\"budget\":5000,\"nodes_visited\":5000,\"truncated\":true,\"saved_to_file\":true,\"file_path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\dumps\\\\analysis\\\\complexity\\\\9cf5b5fb-1419-..."
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "check_recipe_cycles",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"item_id\":\"minecraft:iron_ingot\",\"count\":20,\"depth_limit\":5,\"budget\":5000,\"nodes_visited\":5000,\"truncated\":true,\"saved_to_file\":true,\"file_path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\dumps\\\\analysis\\\\cycles\\\\fd4cd446-78df-45d1-84a9-977e0cfb2a84.json\",\"file_format\":\"json\",\"file_size_bytes\":4317}"
+                                                   },
+                                       "count":  20
+                                   }
+                   },
+                   {
+                       "name":  "find_underutilized_items",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"namespace\":\"minecraft\",\"consumer_threshold\":0,\"count\":476,\"total_count\":476,\"truncated\":false,\"saved_to_file\":true,\"file_path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\dumps\\\\analysis\\\\underutilized\\\\2f20c8a6-1e70-4369-b3db-85f6638cad32.json\",\"file_format\":\"json\",\"file_size_bytes\":37795}"
+                                                   },
+                                       "count":  476
+                                   }
+                   },
+                   {
+                       "name":  "inject_kubejs_script",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"script_path\":\"C:\\\\Users\\\\TheonlyTazz\\\\Documents\\\\Github\\\\BreakinBlocks\\\\NeoMCP\\\\run\\\\kubejs\\\\server_scripts\\\\bbmcp_injected.js\",\"reload_command\":\"/reload\",\"reload_dispatched\":true}"
+                                                   },
+                                       "reload_dispatched":  true
+                                   }
+                   },
+                   {
+                       "name":  "tools/list (after KubeJS reload)",
+                       "kind":  "protocol",
+                       "status":  "PASS",
+                       "details":  {
+                                       "request_id":  44,
+                                       "has_error":  false
+                                   }
+                   },
+                   {
+                       "name":  "dynamic KubeJS tool publication",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "present":  true,
+                                       "advertised_count":  37
+                                   }
+                   },
+                   {
+                       "name":  "bbmcp_endpoint_test",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "{\"dimension\":\"minecraft:overworld\"}"
+                                                   }
+                                   }
+                   },
+                   {
+                       "name":  "execute_command (fixture cleanup)",
+                       "kind":  "tool",
+                       "status":  "PASS",
+                       "details":  {
+                                       "is_error":  false,
+                                       "content":  {
+                                                       "content_types":  [
+                                                                             "text"
+                                                                         ],
+                                                       "image_base64_lengths":  [
+
+                                                                                ],
+                                                       "text":  "Command sent"
+                                                   }
+                                   }
+                   }
+               ]
 }
