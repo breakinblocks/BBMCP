@@ -10,14 +10,7 @@ run/*
 run/config/*
 !run/config/ftbquests/
 run/config/ftbquests/*
-!run/config/ftbquests/quests/
-run/config/ftbquests/quests/*
-!run/config/ftbquests/quests/chapter_groups.snbt
-!run/config/ftbquests/quests/data.snbt
-!run/config/ftbquests/quests/chapters/
-!run/config/ftbquests/quests/chapters/chapter_1.snbt
-!run/config/ftbquests/quests/lang/
-!run/config/ftbquests/quests/lang/en_us.snbt
+run/config/ftbquests/quests/
 runs/
 src/generated/
 

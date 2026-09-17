@@ -86,9 +86,7 @@ Register the server as an HTTP MCP server named `bbmcp`:
 http://localhost:8080/mcp
 ```
 
-The repository records the completed configuration audit in
-[docs/phase0-global-mcp-configuration.md](docs/phase0-global-mcp-configuration.md),
-and repeatable setup instructions are in
+Repeatable setup instructions are in the
 [Agent installation](https://github.com/breakinblocks/BBMCP/wiki/installation).
 The actual client configuration files are user-level files and are not stored
 in Git.
