@@ -22,9 +22,7 @@ Minecraft-aware context without turning the game into an internet-facing API.
 This project is intended for local development and automation. It is not an
 internet-facing server and currently has no authentication layer.
 
-The maintained technical documentation is in the [BBMCP wiki](docs/wiki/README.md).
-The [CurseForge description](docs/curseforge-description.md) contains a
-publish-ready overview, installation steps, and a short usage guide.
+The maintained technical documentation is in the [BBMCP wiki](https://github.com/breakinblocks/BBMCP/wiki).
 
 ## Project metadata
 
@@ -75,7 +73,7 @@ http://localhost:8080/mcp
 ```
 
 The port and request/resource limits are configurable in
-`config/bbmcp-client.toml`; see [Configuration](docs/wiki/configuration.md).
+`config/bbmcp-client.toml`; see [Configuration](https://github.com/breakinblocks/BBMCP/wiki/configuration).
 The server always binds to loopback (`127.0.0.1`) and accepts `POST` requests
 with the `application/json` content type. It implements MCP JSON-RPC 2.0 with
 protocol version `2024-11-05`.
@@ -91,7 +89,7 @@ http://localhost:8080/mcp
 The repository records the completed configuration audit in
 [docs/phase0-global-mcp-configuration.md](docs/phase0-global-mcp-configuration.md),
 and repeatable setup instructions are in
-[Agent installation](docs/wiki/installation.md).
+[Agent installation](https://github.com/breakinblocks/BBMCP/wiki/installation).
 The actual client configuration files are user-level files and are not stored
 in Git.
 
@@ -266,7 +264,7 @@ client API.
 action ID and are bounded by `maxActionTicks`; starting another action
 cancels the previous one. These are primitive inputs only: BBMCP does not
 provide collision-aware navigation, pathfinding, mouse automation, or
-Baritone support. See [Movement and compatibility](docs/wiki/movement-and-compatibility.md).
+Baritone support. See [Movement and compatibility](https://github.com/breakinblocks/BBMCP/wiki/movement-and-compatibility).
 
 ### Recipes and viewers
 
@@ -292,7 +290,7 @@ viewer adapter and is compile-only in this project; install JEI in the
 runtime instance to enable GUI/catalyst/card features. EMI and REI are
 detected for future drop-in adapters but are not implemented yet. Recipe
 tools are read-only and do not transfer items or craft on the player's
-behalf. See [Recipe viewers and recipe graph](docs/wiki/recipes.md).
+behalf. See [Recipe viewers and recipe graph](https://github.com/breakinblocks/BBMCP/wiki/recipes).
 
 ## Architecture
 
