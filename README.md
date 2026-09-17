@@ -1,9 +1,23 @@
+<p align="center">
+  <img src="Banner_2.png" alt="BBMCP — BreakinBlocks' Model Context Protocol for Minecraft" width="100%">
+</p>
+
 # BBMCP
 
-BBMCP is an internal development tool for NeoForge 1.21.1. It embeds a
-localhost HTTP server in the Minecraft client JVM and exposes game-state
-inspection, command execution, screenshots, and FTB Quests tooling through
-MCP JSON-RPC.
+<p>
+  <img src="https://img.shields.io/badge/Minecraft-1.21.1-62B47A?logo=minecraft&logoColor=white" alt="Minecraft 1.21.1">
+  <img src="https://img.shields.io/badge/NeoForge-21.1.173%2B-F28C28?logo=curseforge&logoColor=white" alt="NeoForge 21.1.173 or newer">
+  <img src="https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white" alt="Java 21">
+  <img src="https://img.shields.io/badge/MCP-JSON--RPC_2.0-7C3AED" alt="MCP JSON-RPC 2.0">
+</p>
+
+BBMCP is BreakinBlocks' local-first **Model Context Protocol bridge for
+Minecraft**. It embeds a loopback HTTP server in the NeoForge client JVM and
+gives MCP clients structured access to game state, commands, screenshots,
+recipes, FTB Quests, and optional KubeJS tooling.
+
+It is built for developers, modpack authors, and automation workflows that need
+Minecraft-aware context without turning the game into an internet-facing API.
 
 This project is intended for local development and automation. It is not an
 internet-facing server and currently has no authentication layer.
@@ -268,6 +282,7 @@ Baritone support. See [Movement and compatibility](docs/wiki/movement-and-compat
 | `scan_for_loops` | `{ "item_id": string, "max_depth": int? }` | Finds potential circular recipe dependencies, capped by `maxRecipeLoopDepth`. |
 | `capture_recipe_card` | `{ "recipe_id": string, "save_png": boolean? }` | Returns one JEI recipe card as an off-screen `image/png` MCP content block; optionally saves a generated PNG under `screenshots/`. |
 | `dump_recipes` | `{ "mod_namespace": string?, "recipe_type": string?, "save_json": boolean? }` | Dumps synchronized recipes, optionally filtered and saved under `dumps/recipes/`. |
+| `calculate_production_cost` | `{ "item_id": string, "max_depth": int?, "save_json": boolean? }` | Calculates bounded ingredient costs and processing steps for an item. |
 | `analyze_recipe_complexity` | `{ "item_id": string, "save_json": boolean? }` | Calculates bounded namespace diversity and sequential processing depth. |
 | `check_recipe_cycles` | `{ "item_id": string, "save_json": boolean? }` | Detects bounded recipe cycles reachable from an item. |
 | `find_underutilized_items` | `{ "mod_namespace": string, "save_json": boolean? }` | Finds producible items in a namespace with zero canonical recipe consumers. |
